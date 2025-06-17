@@ -1,6 +1,7 @@
 package org.bookswap.listings.repository;
 
 import org.bookswap.auth.entity.User;
+import org.bookswap.catalog.entity.AgeCategory;
 import org.bookswap.listings.entity.BookCondition;
 import org.bookswap.listings.entity.City;
 import org.bookswap.listings.entity.Listing;
@@ -13,6 +14,37 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ListingRepo extends JpaRepository<Listing, Long> {
+
+    @Query("""
+    SELECT DISTINCT l FROM Listing l
+    JOIN l.book b
+    LEFT JOIN b.genres g
+    WHERE l.isOpen = true AND l.isBlocked = false
+      AND (:title IS NULL OR LOWER(b.title) LIKE LOWER(CONCAT('%', :title, '%')))
+      AND (:author IS NULL OR LOWER(b.author) LIKE LOWER(CONCAT('%', :author, '%')))
+      AND (:ageCategories IS NULL OR b.ageCategory IN :ageCategories)
+      AND (:genreIds IS NULL OR g.id IN :genreIds)
+    ORDER BY l.createdAt DESC
+""")
+    Page<Listing> searchListingsByBookData(@Param("title") String title,
+                                           @Param("author") String author,
+                                           @Param("ageCategories") List<AgeCategory> ageCategories,
+                                           @Param("genreIds") List<Long> genreIds,
+                                           Pageable pageable);
+
+
+    @Query("""
+    SELECT l FROM Listing l
+    WHERE l.book.id = :bookId
+      AND l.isOpen = true
+      AND l.isBlocked = false
+      AND (:cityId IS NULL OR l.city.id = :cityId)
+    ORDER BY l.createdAt DESC
+""")
+    List<Listing> findOpenListingsByBookAndCity(@Param("bookId") Long bookId,
+                                                @Param("cityId") Long cityId,
+                                                Pageable pageable);
+
 
     // Все открытые объявления (например, главная страница)
     List<Listing> findByIsOpenTrueAndIsBlockedFalse();
@@ -51,4 +83,26 @@ public interface ListingRepo extends JpaRepository<Listing, Long> {
 
     // Удалить все объявления по книге (например, если книга удаляется)
     void deleteByBookId(Long bookId);
+
+    //Автокомплит по названию
+    @Query("""
+    SELECT DISTINCT b.title FROM Listing l
+    JOIN l.book b
+    WHERE l.isOpen = true AND l.isBlocked = false
+      AND LOWER(b.title) LIKE LOWER(CONCAT(:prefix, '%'))
+    ORDER BY b.title
+""")
+    List<String> autocompleteTitlesFromListings(@Param("prefix") String prefix, Pageable pageable);
+
+    //Автокомплит по автору
+    @Query("""
+    SELECT DISTINCT b.author FROM Listing l
+    JOIN l.book b
+    WHERE l.isOpen = true AND l.isBlocked = false
+      AND LOWER(b.author) LIKE LOWER(CONCAT(:prefix, '%'))
+    ORDER BY b.author
+""")
+    List<String> autocompleteAuthorsFromListings(@Param("prefix") String prefix, Pageable pageable);
+
 }
+

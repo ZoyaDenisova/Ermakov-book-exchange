@@ -1,4 +1,4 @@
-package org.bookswap.messaging.Entity;
+package org.bookswap.messaging.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

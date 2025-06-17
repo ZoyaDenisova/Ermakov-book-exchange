@@ -13,6 +13,15 @@ import java.util.List;
 
 public interface BookRepo extends JpaRepository<Book, Long> {
 
+    //Глобальный поиск по автору или названию
+    @Query("""
+    SELECT DISTINCT b FROM Book b
+    WHERE (LOWER(b.title) LIKE LOWER(CONCAT('%', :query, '%'))
+        OR LOWER(b.author) LIKE LOWER(CONCAT('%', :query, '%')))
+      AND b.moderationStatus = 'APPROVED'
+""")
+    Page<Book> globalBookSearch(@Param("query") String query, Pageable pageable);
+
     // Поиск по названию/автору/жанру/возрасту (частичное совпадение, без учёта регистра)
     @Query("""
     SELECT DISTINCT b FROM Book b
@@ -44,6 +53,13 @@ public interface BookRepo extends JpaRepository<Book, Long> {
 """)
     List<String> findTopTitlesByPrefix(@Param("prefix") String prefix, Pageable pageable);
 
+    @Query("""
+    SELECT DISTINCT b.title FROM Book b
+    WHERE LOWER(b.title) LIKE LOWER(CONCAT(:prefix, '%'))
+    AND b.moderationStatus = 'APPROVED'
+    ORDER BY b.title
+""")
+    List<String> autocompleteTitles(@Param("prefix") String prefix, Pageable pageable);
 
     // Получить все книги, созданные конкретным пользователем
     List<Book> findByCreatedById(Long userId);

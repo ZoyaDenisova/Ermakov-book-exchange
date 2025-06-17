@@ -1,4 +1,4 @@
-package org.bookswap.reviews.Entity;
+package org.bookswap.messaging.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -6,33 +6,27 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.bookswap.auth.entity.User;
-import org.bookswap.listings.entity.Listing;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "complaints")
+@Table(name = "messages")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Complaint {
+public class Message {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "listing_id")
-    private Listing listing;
+    @JoinColumn(name = "dialog_id")
+    private Dialog dialog;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "from_user_id")
-    private User fromUser;
+    @JoinColumn(name = "author_id")
+    private User author;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "to_user_id")
-    private User toUser;
-
-    private String comment;
-    private boolean isReviewed;
+    private String content;
     private LocalDateTime createdAt;
 }

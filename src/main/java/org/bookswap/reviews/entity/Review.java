@@ -1,4 +1,4 @@
-package org.bookswap.reviews.Entity;
+package org.bookswap.reviews.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

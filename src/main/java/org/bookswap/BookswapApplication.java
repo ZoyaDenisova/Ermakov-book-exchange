@@ -1,0 +1,11 @@
+package org.bookswap;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class BookswapApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(BookswapApplication.class, args);
+    }
+}

@@ -1,0 +1,41 @@
+databaseChangeLog:
+  - changeSet:
+      id: init-schema
+      author: me
+      changes:
+        - sqlFile:
+            path: 001_init_schema.sql
+            splitStatements: true
+            endDelimiter: ;
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: add-foreign-keys
+      author: me
+      changes:
+        - sqlFile:
+            path: 002_add_foreign_keys.sql
+            splitStatements: true
+            endDelimiter: ;
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: add-user-role
+      author: me
+      changes:
+        - sqlFile:
+            path: 003_add_user_role.sql
+            splitStatements: true
+            endDelimiter: ;
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: add-wanted_books_table
+      author: me
+      changes:
+        - sqlFile:
+            path: 004_add_wanted_books_table.sql
+            splitStatements: true
+            endDelimiter: ;
+            relativeToChangelogFile: true
+

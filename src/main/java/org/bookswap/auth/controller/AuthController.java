@@ -1,9 +1,13 @@
 package org.bookswap.auth.controller;
 
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.bookswap.auth.dto.*;
+import org.bookswap.auth.entity.Role;
+import org.bookswap.auth.security.AuthContext;
+import org.bookswap.auth.security.SecurityUtil;
 import org.bookswap.auth.security.TokenManager;
 import org.bookswap.auth.security.TokenManager.ParsedToken;
 import org.bookswap.auth.usecase.AuthUseCase;
@@ -78,20 +82,27 @@ public class AuthController {
 
     @PatchMapping("/role/{id}")
     public ResponseEntity<Void> changeRole(@PathVariable Long id,
-                                           @RequestBody ChangeRoleDto dto) {
+                                           @RequestBody ChangeRoleDto dto,
+                                           HttpServletRequest request) {
+        AuthContext ctx = new AuthContext(request, tokenManager);
+        SecurityUtil.assertHasRole(ctx.getRole(), Role.ADMIN);
         authUseCase.changeRole(id, dto);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/ban/{id}")
-    public ResponseEntity<Void> banUser(@PathVariable Long id) {
-        authUseCase.banUser(id);
+    public ResponseEntity<Void> banUser(@PathVariable Long id, HttpServletRequest request) {
+        AuthContext ctx = new AuthContext(request, tokenManager);
+        SecurityUtil.assertHasRole(ctx.getRole(), Role.MODERATOR, Role.ADMIN);
+        authUseCase.banUser(id, ctx.getUserId());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/unban/{id}")
-    public ResponseEntity<Void> unbanUser(@PathVariable Long id) {
-        authUseCase.unbanUser(id);
+    public ResponseEntity<Void> unbanUser(@PathVariable Long id, HttpServletRequest request) {
+        AuthContext ctx = new AuthContext(request, tokenManager);
+        SecurityUtil.assertHasRole(ctx.getRole(), Role.MODERATOR, Role.ADMIN);
+        authUseCase.unbanUser(id, ctx.getUserId());
         return ResponseEntity.ok().build();
     }
 

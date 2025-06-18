@@ -3,6 +3,7 @@ package org.bookswap.auth.security;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.bookswap.auth.dto.TokenPairDto;
+import org.bookswap.common.exception.UnauthorizedException;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -53,7 +54,7 @@ public class JwtManager implements TokenManager {
 
             return new ParsedToken(userId, role);
         } catch (JwtException e) {
-            throw new IllegalArgumentException("Invalid or expired JWT token");
+            throw new UnauthorizedException("Invalid or expired JWT token");
         }
     }
 

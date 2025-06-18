@@ -26,6 +26,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.bookswap.auth.security.SecurityUtil.assertNotBanned;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -68,6 +70,7 @@ public class AuthUseCase {
         if (!hasher.verify(user.getPasswordHash(), dto.password())) {
             throw new UnauthorizedException("Invalid credentials");
         }
+        assertNotBanned(user);
 
         return issueTokens(user);
     }
@@ -75,6 +78,8 @@ public class AuthUseCase {
     public void updateUser(Long userId, UpdateUserDto dto) {
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
+
+        assertNotBanned(user);
 
         if (dto.name() != null) user.setName(dto.name());
         if (dto.avatarUrl() != null) user.setAvatarUrl(dto.avatarUrl());
@@ -91,6 +96,8 @@ public class AuthUseCase {
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
+        assertNotBanned(user);
+
         if (!hasher.verify(user.getPasswordHash(), dto.oldPassword())) {
             throw new UnauthorizedException("Old password is incorrect");
         }
@@ -102,6 +109,8 @@ public class AuthUseCase {
     public void changeRole(Long userId, ChangeRoleDto dto) {
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
+
+        assertNotBanned(user);
 
         try {
             user.setRole(Role.valueOf(dto.role()));
@@ -155,18 +164,31 @@ public class AuthUseCase {
         return userRepo.findAll().stream().map(this::toDto).toList();
     }
 
-    public void banUser(Long userId) {
-        if (!userRepo.existsById(userId)) {
-            throw new NotFoundException("User not found");
+    public void banUser(Long targetId, Long actorId) {
+        User actor = userRepo.findById(actorId)
+                .orElseThrow(() -> new NotFoundException("Invoker not found"));
+
+        assertNotBanned(actor);
+
+        if (!userRepo.existsById(targetId)) {
+            throw new NotFoundException("Target user not found");
         }
-        userRepo.banUser(userId);
+
+        userRepo.banUser(targetId);
     }
 
-    public void unbanUser(Long userId) {
-        if (!userRepo.existsById(userId)) {
-            throw new NotFoundException("User not found");
+
+    public void unbanUser(Long targetId, Long actorId) {
+        User actor = userRepo.findById(actorId)
+                .orElseThrow(() -> new NotFoundException("Invoker not found"));
+
+        assertNotBanned(actor);
+
+        if (!userRepo.existsById(targetId)) {
+            throw new NotFoundException("Target user not found");
         }
-        userRepo.unbanUser(userId);
+
+        userRepo.unbanUser(targetId);
     }
 
     public TokenPairDto refreshToken(String refreshToken) {

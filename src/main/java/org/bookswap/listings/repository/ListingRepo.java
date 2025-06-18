@@ -7,11 +7,12 @@ import org.bookswap.listings.entity.City;
 import org.bookswap.listings.entity.Listing;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.*;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface ListingRepo extends JpaRepository<Listing, Long> {
 
@@ -60,16 +61,26 @@ public interface ListingRepo extends JpaRepository<Listing, Long> {
 
     // Объявления по городу, книге и состоянию
     @Query("""
-        SELECT l FROM Listing l
-        WHERE l.isOpen = true AND l.isBlocked = false
-          AND (:bookId IS NULL OR l.book.id = :bookId)
-          AND (:city IS NULL OR l.city = :city)
+        SELECT DISTINCT l FROM Listing l
+        JOIN l.book b
+        LEFT JOIN b.genres g
+        WHERE l.isOpen   = true
+          AND l.isBlocked = false
+          AND (:title  IS NULL OR LOWER(b.title)  LIKE LOWER(CONCAT('%', :title,  '%')))
+          AND (:author IS NULL OR LOWER(b.author) LIKE LOWER(CONCAT('%', :author, '%')))
+          AND (:ageCategories IS NULL OR b.ageCategory IN :ageCategories)
+          AND (:genreIds      IS NULL OR g.id         IN :genreIds)
+          AND (:city      IS NULL OR l.city      = :city)
           AND (:condition IS NULL OR l.condition = :condition)
+        ORDER BY l.createdAt DESC
     """)
-    Page<Listing> searchListings(@Param("bookId") Long bookId,
-                                 @Param("city") City city,
-                                 @Param("condition") BookCondition condition,
-                                 Pageable pageable);
+    Page<Listing> searchListingsFull(@Param("title") String title,
+                                     @Param("author") String author,
+                                     @Param("ageCategories") List<AgeCategory> ageCategories,
+                                     @Param("genreIds") List<Long> genreIds,
+                                     @Param("city") City city,
+                                     @Param("condition") BookCondition condition,
+                                     Pageable pageable);
 
     // Заблокировать все объявления пользователя (например, при бане)
     @Modifying

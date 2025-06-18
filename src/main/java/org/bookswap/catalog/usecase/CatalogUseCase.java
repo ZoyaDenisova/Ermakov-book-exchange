@@ -4,7 +4,10 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.bookswap.auth.entity.User;
 import org.bookswap.auth.repository.UserRepo;
-import org.bookswap.catalog.dto.*;
+import org.bookswap.catalog.dto.BookDto;
+import org.bookswap.catalog.dto.CreateBookDto;
+import org.bookswap.catalog.dto.GenreDto;
+import org.bookswap.catalog.dto.UpdateBookDto;
 import org.bookswap.catalog.entity.*;
 import org.bookswap.catalog.repository.BookImageRepo;
 import org.bookswap.catalog.repository.BookRepo;
@@ -17,14 +20,11 @@ import org.bookswap.shared.image.ImageService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import java.util.Objects;
-
-import org.bookswap.catalog.entity.Book;
-import org.bookswap.catalog.entity.BookImage;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -50,10 +50,12 @@ public class CatalogUseCase {
                         .orElseThrow(() -> new BadRequestException("Genre not found: " + id)))
                 .collect(Collectors.toSet());
 
-        ModerationStatus status = switch (role) {
-            case "MODERATOR", "ADMIN" -> ModerationStatus.APPROVED;
-            default -> ModerationStatus.PENDING;
-        };
+//        ModerationStatus status = switch (role) {
+//            case "MODERATOR", "ADMIN" -> ModerationStatus.APPROVED;
+//            default -> ModerationStatus.PENDING;
+//        };
+
+        ModerationStatus status = ModerationStatus.APPROVED;
 
         Book book = Book.builder()
                 .title(dto.title())
@@ -174,35 +176,33 @@ public class CatalogUseCase {
         assertNotBanned(user);
         return user;
     }
-
-    public List<String> autocompleteAuthors(String prefix, Pageable pageable) {
-        return bookRepo.autocompleteAuthors(prefix, pageable);
-    }
-
-    public List<String> autocompleteTitles(String prefix, Pageable pageable) {
-        return bookRepo.autocompleteTitles(prefix, pageable);
-    }
-
-    public List<BookDto> getBooksForModeration() {
-        return bookRepo.findByModerationStatus(ModerationStatus.PENDING).stream()
-                .map(this::toDto)
-                .toList();
-    }
-
-    public void approveBook(Long bookId) {
-        Book book = bookRepo.findById(bookId)
-                .orElseThrow(() -> new NotFoundException("Book not found"));
-        book.setModerationStatus(ModerationStatus.APPROVED);
-        bookRepo.save(book);
-    }
-
-    public void rejectBook(Long bookId) {
-        Book book = bookRepo.findById(bookId)
-                .orElseThrow(() -> new NotFoundException("Book not found"));
-        book.setModerationStatus(ModerationStatus.REJECTED);
-        bookRepo.save(book);
-    }
-
+//    public List<String> autocompleteAuthors(String prefix, Pageable pageable) {
+//        return bookRepo.autocompleteAuthors(prefix, pageable);
+//    }
+//
+//    public List<String> autocompleteTitles(String prefix, Pageable pageable) {
+//        return bookRepo.autocompleteTitles(prefix, pageable);
+//    }
+//
+//    public List<BookDto> getBooksForModeration() {
+//        return bookRepo.findByModerationStatus(ModerationStatus.PENDING).stream()
+//                .map(this::toDto)
+//                .toList();
+//    }
+//
+//    public void approveBook(Long bookId) {
+//        Book book = bookRepo.findById(bookId)
+//                .orElseThrow(() -> new NotFoundException("Book not found"));
+//        book.setModerationStatus(ModerationStatus.APPROVED);
+//        bookRepo.save(book);
+//    }
+//
+//    public void rejectBook(Long bookId) {
+//        Book book = bookRepo.findById(bookId)
+//                .orElseThrow(() -> new NotFoundException("Book not found"));
+//        book.setModerationStatus(ModerationStatus.REJECTED);
+//        bookRepo.save(book);
+//    }
     public void deleteBook(Long bookId) {
         if (!bookRepo.existsById(bookId)) {
             throw new NotFoundException("Book not found");

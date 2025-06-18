@@ -82,4 +82,27 @@ public class ListingController {
         );
     }
 
+    @Operation(summary = "Закрыть объявление (владелец)")
+    @PatchMapping("/{id}/close")
+    public ResponseEntity<Void> closeListing(@PathVariable Long id, HttpServletRequest request) {
+        AuthContext auth = new AuthContext(request, tokenManager);
+        listingUseCase.closeListing(id, auth);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Заблокировать объявление (модератор/админ)")
+    @PatchMapping("/{id}/block")
+    public ResponseEntity<Void> blockListing(@PathVariable Long id, HttpServletRequest request) {
+        AuthContext auth = new AuthContext(request, tokenManager);
+        listingUseCase.blockListing(id, auth);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Разблокировать объявление (модератор/админ)")
+    @PatchMapping("/{id}/unblock")
+    public ResponseEntity<Void> unblockListing(@PathVariable Long id, HttpServletRequest request) {
+        AuthContext auth = new AuthContext(request, tokenManager);
+        listingUseCase.unblockListing(id, auth);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -4,6 +4,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.bookswap.auth.entity.User;
 import org.bookswap.auth.repository.UserRepo;
+import org.bookswap.auth.security.AuthContext;
+import org.bookswap.auth.security.SecurityUtil;
 import org.bookswap.catalog.entity.AgeCategory;
 import org.bookswap.catalog.entity.Book;
 import org.bookswap.catalog.repository.BookRepo;
@@ -44,8 +46,10 @@ public class ListingUseCase {
     private final ListingImageRepo imageRepo;
     private final ImageService imageService;
 
+    @Transactional
     public ListingDto createListing(Long userId, CreateListingDto dto, List<MultipartFile> images) {
         User user = getActiveUser(userId);
+
         Book book = bookRepo.findById(dto.bookId())
                 .orElseThrow(() -> new NotFoundException("Book not found"));
         City city = cityRepo.findById(dto.cityId())
@@ -154,8 +158,34 @@ public class ListingUseCase {
         return page.map(this::toDto);
     }
 
-    private boolean isBlank(String s) {
-        return s == null || s.isBlank();
+    @Transactional
+    public void closeListing(Long id, AuthContext auth) {
+        Listing listing = listingRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Listing not found"));
+
+        SecurityUtil.assertIsSelfOrThrow(auth.getUserId(), listing.getOwner().getId());
+
+        listing.setOpen(false);
+    }
+
+    @Transactional
+    public void blockListing(Long id, AuthContext auth) {
+        SecurityUtil.assertHasRole(auth.getRole(), org.bookswap.auth.entity.Role.ADMIN, org.bookswap.auth.entity.Role.MODERATOR);
+
+        Listing listing = listingRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Listing not found"));
+
+        listing.setBlocked(true);
+    }
+
+    @Transactional
+    public void unblockListing(Long id, AuthContext auth) {
+        SecurityUtil.assertHasRole(auth.getRole(), org.bookswap.auth.entity.Role.ADMIN, org.bookswap.auth.entity.Role.MODERATOR);
+
+        Listing listing = listingRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Listing not found"));
+
+        listing.setBlocked(false);
     }
 
     private User getActiveUser(Long userId) {

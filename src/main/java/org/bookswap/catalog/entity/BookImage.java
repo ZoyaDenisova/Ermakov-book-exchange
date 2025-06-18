@@ -16,8 +16,8 @@ public class BookImage {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "book_id")
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "book_id", unique = true)
     private Book book;
 
     private String url;

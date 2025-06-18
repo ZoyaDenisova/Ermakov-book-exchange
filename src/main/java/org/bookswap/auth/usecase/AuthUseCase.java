@@ -21,7 +21,9 @@ import org.bookswap.listings.entity.City;
 import org.bookswap.listings.entity.Listing;
 import org.bookswap.listings.repository.CityRepo;
 import org.bookswap.listings.repository.ListingRepo;
+import org.bookswap.shared.image.ImageService;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,6 +42,7 @@ public class AuthUseCase {
     private final CityRepo cityRepo;
     private final PasswordHasher hasher;
     private final TokenManager tokenManager;
+    private final ImageService imageService;
 
     public TokenPairDto register(RegisterDto dto) {
         userRepo.findByEmail(dto.email()).ifPresent(u -> {
@@ -120,39 +123,6 @@ public class AuthUseCase {
         userRepo.save(user);
     }
 
-    public UserPublicDto getPublicProfile(Long userId) {
-        User user = userRepo.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
-
-        List<Listing> listings = listingRepo.findByOwnerIdAndIsOpenTrueAndIsBlockedFalse(userId);
-        List<WantedBook> wants = wantedBookRepo.findByUserId(userId);
-
-        List<BookShortDto> canOffer = listings.stream()
-                .map(l -> {
-                    Book b = l.getBook();
-                    return new BookShortDto(b.getId(), b.getTitle(), b.getAuthor());
-                })
-                .distinct()
-                .toList();
-
-        List<BookShortDto> wantList = wants.stream()
-                .map(w -> {
-                    Book b = w.getBook();
-                    return new BookShortDto(b.getId(), b.getTitle(), b.getAuthor());
-                })
-                .distinct()
-                .toList();
-
-        return new UserPublicDto(
-                user.getId(),
-                user.getName(),
-                user.getAvatarUrl(),
-                user.getCity() != null ? user.getCity().getName() : null,
-                canOffer,
-                wantList
-        );
-    }
-
     public UserDto getById(Long id) {
         User u = userRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("User not found"));
@@ -220,6 +190,36 @@ public class AuthUseCase {
     public void logoutAll(Long userId) {
         sessionRepo.deleteByUserId(userId);
     }
+
+    public void uploadAvatar(Long userId, MultipartFile file) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        assertNotBanned(user);
+
+        // удалить старую аву, если есть
+        if (user.getAvatarUrl() != null) {
+            imageService.deleteImageByUrl(user.getAvatarUrl());
+        }
+
+        String url = imageService.saveImage("avatars", userId, file);
+        user.setAvatarUrl(url);
+        userRepo.save(user);
+    }
+
+    public void deleteAvatar(Long userId) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        assertNotBanned(user);
+
+        if (user.getAvatarUrl() != null) {
+            imageService.deleteImageByUrl(user.getAvatarUrl());
+            user.setAvatarUrl(null);
+            userRepo.save(user);
+        }
+    }
+
 
     private TokenPairDto issueTokens(User user) {
         TokenPairDto tokens = tokenManager.generate(user.getId(), user.getRole().name());

@@ -13,6 +13,10 @@ import org.bookswap.auth.security.TokenManager;
 import org.bookswap.catalog.entity.Book;
 import org.bookswap.catalog.entity.WantedBook;
 import org.bookswap.catalog.repository.WantedBookRepo;
+import org.bookswap.common.exception.BadRequestException;
+import org.bookswap.common.exception.ConflictException;
+import org.bookswap.common.exception.NotFoundException;
+import org.bookswap.common.exception.UnauthorizedException;
 import org.bookswap.listings.entity.City;
 import org.bookswap.listings.entity.Listing;
 import org.bookswap.listings.repository.CityRepo;
@@ -37,11 +41,11 @@ public class AuthUseCase {
 
     public TokenPairDto register(RegisterDto dto) {
         userRepo.findByEmail(dto.email()).ifPresent(u -> {
-            throw new IllegalArgumentException("Email already in use");
+            throw new ConflictException("Email already in use");
         });
 
         City city = cityRepo.findById(dto.cityId())
-                .orElseThrow(() -> new IllegalArgumentException("City not found"));
+                .orElseThrow(() -> new BadRequestException("City not found"));
 
         User user = User.builder()
                 .name(dto.name())
@@ -59,10 +63,10 @@ public class AuthUseCase {
 
     public TokenPairDto login(LoginDto dto) {
         User user = userRepo.findByEmail(dto.email())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+                .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
 
         if (!hasher.verify(user.getPasswordHash(), dto.password())) {
-            throw new IllegalArgumentException("Invalid credentials");
+            throw new UnauthorizedException("Invalid credentials");
         }
 
         return issueTokens(user);
@@ -70,13 +74,13 @@ public class AuthUseCase {
 
     public void updateUser(Long userId, UpdateUserDto dto) {
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (dto.name() != null) user.setName(dto.name());
         if (dto.avatarUrl() != null) user.setAvatarUrl(dto.avatarUrl());
         if (dto.cityId() != null) {
             City city = cityRepo.findById(dto.cityId())
-                    .orElseThrow(() -> new IllegalArgumentException("City not found"));
+                    .orElseThrow(() -> new BadRequestException("City not found"));
             user.setCity(city);
         }
 
@@ -85,10 +89,10 @@ public class AuthUseCase {
 
     public void changePassword(Long userId, ChangePasswordDto dto) {
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (!hasher.verify(user.getPasswordHash(), dto.oldPassword())) {
-            throw new IllegalArgumentException("Old password is incorrect");
+            throw new UnauthorizedException("Old password is incorrect");
         }
 
         user.setPasswordHash(hasher.hash(dto.newPassword()));
@@ -97,16 +101,19 @@ public class AuthUseCase {
 
     public void changeRole(Long userId, ChangeRoleDto dto) {
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
-        user.setRole(Role.valueOf(dto.role()));
+        try {
+            user.setRole(Role.valueOf(dto.role()));
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid role: " + dto.role());
+        }
         userRepo.save(user);
     }
 
     public UserPublicDto getPublicProfile(Long userId) {
-        User user = userRepo.findById(userId).orElseThrow(() ->
-                new IllegalArgumentException("User not found")
-        );
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         List<Listing> listings = listingRepo.findByOwnerIdAndIsOpenTrueAndIsBlockedFalse(userId);
         List<WantedBook> wants = wantedBookRepo.findByUserId(userId);
@@ -139,7 +146,7 @@ public class AuthUseCase {
 
     public UserDto getById(Long id) {
         User u = userRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         return toDto(u);
     }
@@ -149,20 +156,26 @@ public class AuthUseCase {
     }
 
     public void banUser(Long userId) {
+        if (!userRepo.existsById(userId)) {
+            throw new NotFoundException("User not found");
+        }
         userRepo.banUser(userId);
     }
 
     public void unbanUser(Long userId) {
+        if (!userRepo.existsById(userId)) {
+            throw new NotFoundException("User not found");
+        }
         userRepo.unbanUser(userId);
     }
 
     public TokenPairDto refreshToken(String refreshToken) {
         Session session = sessionRepo.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid token"));
+                .orElseThrow(() -> new UnauthorizedException("Invalid token"));
 
         if (session.getExpiresAt().isBefore(LocalDateTime.now())) {
             sessionRepo.deleteByRefreshToken(refreshToken);
-            throw new IllegalArgumentException("Token expired");
+            throw new UnauthorizedException("Token expired");
         }
 
         return issueTokens(session.getUser());

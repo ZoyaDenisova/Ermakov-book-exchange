@@ -1,6 +1,5 @@
 package org.bookswap.auth.usecase;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.bookswap.auth.dto.*;
 import org.bookswap.auth.entity.Role;
@@ -10,19 +9,17 @@ import org.bookswap.auth.repository.SessionRepo;
 import org.bookswap.auth.repository.UserRepo;
 import org.bookswap.auth.security.PasswordHasher;
 import org.bookswap.auth.security.TokenManager;
-import org.bookswap.catalog.entity.Book;
-import org.bookswap.catalog.entity.WantedBook;
 import org.bookswap.catalog.repository.WantedBookRepo;
 import org.bookswap.common.exception.BadRequestException;
 import org.bookswap.common.exception.ConflictException;
 import org.bookswap.common.exception.NotFoundException;
 import org.bookswap.common.exception.UnauthorizedException;
 import org.bookswap.listings.entity.City;
-import org.bookswap.listings.entity.Listing;
 import org.bookswap.listings.repository.CityRepo;
 import org.bookswap.listings.repository.ListingRepo;
 import org.bookswap.shared.image.ImageService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;

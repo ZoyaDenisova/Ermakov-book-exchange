@@ -1,6 +1,5 @@
 package org.bookswap.catalog.usecase;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.bookswap.auth.entity.User;
 import org.bookswap.auth.repository.UserRepo;
@@ -20,6 +19,7 @@ import org.bookswap.shared.image.ImageService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -176,7 +176,8 @@ public class CatalogUseCase {
         assertNotBanned(user);
         return user;
     }
-//    public List<String> autocompleteAuthors(String prefix, Pageable pageable) {
+
+    //    public List<String> autocompleteAuthors(String prefix, Pageable pageable) {
 //        return bookRepo.autocompleteAuthors(prefix, pageable);
 //    }
 //

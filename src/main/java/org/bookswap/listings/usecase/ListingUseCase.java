@@ -1,6 +1,6 @@
 package org.bookswap.listings.usecase;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.bookswap.auth.entity.User;
 import org.bookswap.auth.repository.UserRepo;

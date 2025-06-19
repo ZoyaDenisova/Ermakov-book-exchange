@@ -35,4 +35,15 @@ public interface DialogRepo extends JpaRepository<Dialog, Long> {
     ) DESC
 """)
     List<Dialog> findDialogsByListingOrderedByLastMessage(@Param("listingId") Long listingId);
+
+    @Query("""
+SELECT d FROM Dialog d
+WHERE ((d.user1.id = :user1Id AND d.user2.id = :user2Id) OR (d.user1.id = :user2Id AND d.user2.id = :user1Id))
+  AND d.listing.id = :listingId
+""")
+    Optional<Dialog> findBetweenUsersForListing(@Param("user1Id") Long user1Id,
+                                                @Param("user2Id") Long user2Id,
+                                                @Param("listingId") Long listingId);
+
 }
+

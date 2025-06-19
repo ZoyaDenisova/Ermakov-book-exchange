@@ -32,6 +32,11 @@ public class ExchangeUseCase {
 
     @Transactional
     public ExchangeDto proposeExchange(Long senderId, ExchangeCreateDto dto) {
+        Exchange exchange = proposeExchangeEntity(senderId, dto);
+        return toDto(exchange);
+    }
+
+    public Exchange proposeExchangeEntity(Long senderId, ExchangeCreateDto dto) {
         if (dto.offeredListingId().equals(dto.selectedListingId())) {
             throw new BadRequestException("Cannot exchange listing with itself");
         }
@@ -67,7 +72,7 @@ public class ExchangeUseCase {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return toDto(exchangeRepo.save(exchange));
+        return exchangeRepo.save(exchange);
     }
 
     @Transactional
@@ -144,7 +149,7 @@ public class ExchangeUseCase {
     }
 
 
-    private ExchangeDto toDto(Exchange e) {
+    public ExchangeDto toDto(Exchange e) {
         return new ExchangeDto(
                 e.getId(),
                 e.getSender().getId(),

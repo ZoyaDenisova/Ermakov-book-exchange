@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.bookswap.auth.entity.User;
+import org.bookswap.exchange.entity.Exchange;
 
 import java.time.LocalDateTime;
 
@@ -28,5 +29,12 @@ public class Message {
     private User author;
 
     private String content;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "exchange_id")
+    private Exchange exchange;
+
+    private boolean isExchangeProposal;
+
     private LocalDateTime createdAt;
 }

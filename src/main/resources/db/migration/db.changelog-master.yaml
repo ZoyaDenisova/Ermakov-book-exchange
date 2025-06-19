@@ -39,3 +39,12 @@ databaseChangeLog:
             endDelimiter: ;
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: add_exchange_to_messages
+      author: me
+      changes:
+        - sqlFile:
+            path: 005_add_exchange_to_messages.sql
+            splitStatements: true
+            endDelimiter: ;
+            relativeToChangelogFile: true

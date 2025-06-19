@@ -2,9 +2,11 @@ package org.bookswap.exchange.repository;
 
 import org.bookswap.exchange.entity.Exchange;
 import org.bookswap.exchange.entity.ExchangeStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -56,6 +58,13 @@ public interface ExchangeRepo extends JpaRepository<Exchange, Long> {
     //Все обмены по листингу с конкретным статусом (напр. все отклонённые предложения по листингу)
     List<Exchange> findByOfferedIdAndStatus(Long offeredId, ExchangeStatus status);
 
-
+    @Query("""
+    SELECT e FROM Exchange e
+    WHERE (e.sender.id = :userId OR e.receiver.id = :userId)
+      AND (:status IS NULL OR e.status = :status)
+""")
+    Page<Exchange> findAllByUserInvolvedAndOptionalStatus(@Param("userId") Long userId,
+                                                          @Param("status") ExchangeStatus status,
+                                                          Pageable pageable);
 }
 

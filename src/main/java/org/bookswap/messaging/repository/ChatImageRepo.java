@@ -8,6 +8,4 @@ import java.util.List;
 public interface ChatImageRepo extends JpaRepository<ChatImage, Long> {
 
     List<ChatImage> findByMessageId(Long messageId);
-
-    void deleteByMessageId(Long messageId);
 }

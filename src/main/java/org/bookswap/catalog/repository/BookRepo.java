@@ -2,7 +2,6 @@ package org.bookswap.catalog.repository;
 
 import org.bookswap.catalog.entity.AgeCategory;
 import org.bookswap.catalog.entity.Book;
-import org.bookswap.catalog.entity.ModerationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,14 +12,19 @@ import java.util.List;
 
 public interface BookRepo extends JpaRepository<Book, Long> {
 
-    //Глобальный поиск по автору или названию
     @Query("""
-    SELECT DISTINCT b FROM Book b
-    WHERE (LOWER(b.title) LIKE LOWER(CONCAT('%', :query, '%'))
-        OR LOWER(b.author) LIKE LOWER(CONCAT('%', :query, '%')))
-      AND b.moderationStatus = 'APPROVED'
+    SELECT DISTINCT b.title FROM Book b
+    WHERE LOWER(b.title) LIKE LOWER(CONCAT(:prefix, '%'))
+    ORDER BY b.title ASC
 """)
-    Page<Book> globalBookSearch(@Param("query") String query, Pageable pageable);
+    List<String> autocompleteTitles(@Param("prefix") String prefix, Pageable pageable);
+
+    @Query("""
+    SELECT DISTINCT b.author FROM Book b
+    WHERE LOWER(b.author) LIKE LOWER(CONCAT(:prefix, '%'))
+    ORDER BY b.author ASC
+""")
+    List<String> autocompleteAuthors(@Param("prefix") String prefix, Pageable pageable);
 
     // Поиск по названию/автору/жанру/возрасту (частичное совпадение, без учёта регистра)
     @Query("""
@@ -36,34 +40,5 @@ public interface BookRepo extends JpaRepository<Book, Long> {
                            @Param("ageCategories") List<AgeCategory> ageCategories,
                            @Param("genreIds") List<Long> genreIds,
                            Pageable pageable);
-
-    @Query("""
-    SELECT DISTINCT b.author FROM Book b
-    WHERE LOWER(b.author) LIKE LOWER(CONCAT('%', :prefix, '%'))
-    AND b.moderationStatus = 'APPROVED'
-    ORDER BY b.author
-""")
-    List<String> autocompleteAuthors(@Param("prefix") String prefix, Pageable pageable);
-
-    @Query("""
-    SELECT DISTINCT b.title FROM Book b
-    WHERE LOWER(b.title) LIKE LOWER(CONCAT(:prefix, '%'))
-    AND b.moderationStatus = 'APPROVED'
-    ORDER BY b.title
-""")
-    List<String> autocompleteTitles(@Param("prefix") String prefix, Pageable pageable);
-
-    @Query("""
-    SELECT DISTINCT b.author FROM Book b
-    WHERE LOWER(b.author) LIKE LOWER(CONCAT('%', :prefix, '%'))
-    AND b.moderationStatus = 'APPROVED'
-    ORDER BY b.author
-""")
-    List<String> findTopAuthorsByPrefix(@Param("prefix") String prefix, Pageable pageable);
-    // Получить все книги, созданные конкретным пользователем
-    List<Book> findByCreatedById(Long userId);
-
-    // Найти все книги по статусу модерации
-    List<Book> findByModerationStatus(ModerationStatus status);
 }
 

@@ -10,7 +10,6 @@ import org.bookswap.auth.entity.Role;
 import org.bookswap.auth.security.AuthContext;
 import org.bookswap.auth.security.SecurityUtil;
 import org.bookswap.auth.security.TokenManager;
-import org.bookswap.auth.security.TokenManager.ParsedToken;
 import org.bookswap.auth.usecase.AuthUseCase;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -164,11 +163,5 @@ public class AuthController {
         cookie.setPath("/");
         cookie.setMaxAge(7 * 24 * 60 * 60);
         response.addCookie(cookie);
-    }
-
-    private Long extractUserId(String authHeader) {
-        String token = authHeader.replace("Bearer ", "");
-        ParsedToken parsed = tokenManager.validate(token);
-        return parsed.userId();
     }
 }

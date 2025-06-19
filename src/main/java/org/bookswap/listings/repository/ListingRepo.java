@@ -92,8 +92,12 @@ public interface ListingRepo extends JpaRepository<Listing, Long> {
     @Query("UPDATE Listing l SET l.isOpen = false WHERE l.id = :id")
     void closeListing(@Param("id") Long listingId);
 
-    // Удалить все объявления по книге (например, если книга удаляется)
-    void deleteByBookId(Long bookId);
+    @Query("""
+    SELECT l FROM Listing l
+    WHERE l.owner.id = :userId AND l.isBlocked = false
+    ORDER BY l.isOpen DESC, l.createdAt DESC
+""")
+    Page<Listing> findAllVisibleByUserIdOrdered(@Param("userId") Long userId, Pageable pageable);
 
     //Автокомплит по названию
     @Query("""

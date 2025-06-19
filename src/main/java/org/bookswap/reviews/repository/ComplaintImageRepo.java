@@ -8,5 +8,4 @@ import java.util.List;
 public interface ComplaintImageRepo extends JpaRepository<ComplaintImage, Long> {
 
     List<ComplaintImage> findByComplaintId(Long complaintId);
-    void deleteByComplaintId(Long complaintId);
 }

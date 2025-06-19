@@ -17,6 +17,7 @@ import org.bookswap.common.exception.ForbiddenException;
 import org.bookswap.common.exception.NotFoundException;
 import org.bookswap.shared.image.ImageService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,11 +50,6 @@ public class CatalogUseCase {
                 .map(id -> genreRepo.findById(id)
                         .orElseThrow(() -> new BadRequestException("Genre not found: " + id)))
                 .collect(Collectors.toSet());
-
-//        ModerationStatus status = switch (role) {
-//            case "MODERATOR", "ADMIN" -> ModerationStatus.APPROVED;
-//            default -> ModerationStatus.PENDING;
-//        };
 
         ModerationStatus status = ModerationStatus.APPROVED;
 
@@ -120,20 +116,14 @@ public class CatalogUseCase {
                 .orElseThrow(() -> new NotFoundException("Book not found"));
     }
 
-    public Page<BookDto> searchApprovedBooks(String query, Pageable pageable) {
-        return bookRepo.globalBookSearch(query, pageable).map(this::toDto);
-    }
+//    public Page<BookDto> searchApprovedBooks(String query, Pageable pageable) {
+//        return bookRepo.globalBookSearch(query, pageable).map(this::toDto);
+//    }
 
     public Page<BookDto> filterBooks(String title, String author, List<AgeCategory> ageCategories,
                                      List<Long> genreIds, Pageable pageable) {
         return bookRepo.searchBooks(title, author, ageCategories, genreIds, pageable)
                 .map(this::toDto);
-    }
-
-    public List<BookDto> getUserBooks(Long userId) {
-        return bookRepo.findByCreatedById(userId).stream()
-                .map(this::toDto)
-                .toList();
     }
 
     public void addWantedBook(Long userId, Long bookId) {
@@ -159,12 +149,25 @@ public class CatalogUseCase {
         wantedBookRepo.deleteByUserIdAndBookId(userId, bookId);
     }
 
-    public List<BookDto> getUserWantedBooks(Long userId) {
-        return wantedBookRepo.findByUserId(userId).stream()
-                .map(w -> toDto(w.getBook()))
-                .distinct()
-                .toList();
+    public Page<BookDto> getUserWantedBooks(Long userId, Pageable pageable) {
+        return wantedBookRepo.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(w -> toDto(w.getBook()));
     }
+
+    @Transactional(readOnly = true)
+    public List<String> autocompleteTitles(String prefix) {
+        if (prefix == null || prefix.isBlank()) return List.of();
+        Pageable pageable = PageRequest.of(0, 10);
+        return bookRepo.autocompleteTitles(prefix, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> autocompleteAuthors(String prefix) {
+        if (prefix == null || prefix.isBlank()) return List.of();
+        Pageable pageable = PageRequest.of(0, 10);
+        return bookRepo.autocompleteAuthors(prefix, pageable);
+    }
+
 
     public long getWantedCount(Long bookId) {
         return wantedBookRepo.countByBookId(bookId);
@@ -177,33 +180,6 @@ public class CatalogUseCase {
         return user;
     }
 
-    //    public List<String> autocompleteAuthors(String prefix, Pageable pageable) {
-//        return bookRepo.autocompleteAuthors(prefix, pageable);
-//    }
-//
-//    public List<String> autocompleteTitles(String prefix, Pageable pageable) {
-//        return bookRepo.autocompleteTitles(prefix, pageable);
-//    }
-//
-//    public List<BookDto> getBooksForModeration() {
-//        return bookRepo.findByModerationStatus(ModerationStatus.PENDING).stream()
-//                .map(this::toDto)
-//                .toList();
-//    }
-//
-//    public void approveBook(Long bookId) {
-//        Book book = bookRepo.findById(bookId)
-//                .orElseThrow(() -> new NotFoundException("Book not found"));
-//        book.setModerationStatus(ModerationStatus.APPROVED);
-//        bookRepo.save(book);
-//    }
-//
-//    public void rejectBook(Long bookId) {
-//        Book book = bookRepo.findById(bookId)
-//                .orElseThrow(() -> new NotFoundException("Book not found"));
-//        book.setModerationStatus(ModerationStatus.REJECTED);
-//        bookRepo.save(book);
-//    }
     public void deleteBook(Long bookId) {
         if (!bookRepo.existsById(bookId)) {
             throw new NotFoundException("Book not found");

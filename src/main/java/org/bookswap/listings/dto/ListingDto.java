@@ -10,6 +10,7 @@ public record ListingDto(
         Long bookId,
         String bookTitle,
         String bookAuthor,
+        String bookDescription,
         BookCondition condition,
         Long cityId,
         String cityName,
@@ -17,7 +18,9 @@ public record ListingDto(
         boolean isOpen,
         boolean isBlocked,
         Long ownerId,
+        String ownerName,
         LocalDateTime createdAt
 ) {}
+
 
 

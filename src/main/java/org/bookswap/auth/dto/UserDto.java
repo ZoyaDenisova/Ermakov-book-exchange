@@ -1,5 +1,7 @@
 package org.bookswap.auth.dto;
 
+import org.bookswap.listings.dto.CityDto;
+
 public record UserDto(
         Long id,
         String name,
@@ -7,5 +9,6 @@ public record UserDto(
         String avatarUrl,
         String role,
         boolean isBanned,
-        Long cityId
+        CityDto city
 ) {}
+

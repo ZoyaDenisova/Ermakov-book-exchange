@@ -1,9 +1,9 @@
 package org.bookswap.catalog.repository;
 
 import org.bookswap.catalog.entity.WantedBook;
+import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.List;
+import org.springframework.data.domain.Pageable;
 
 public interface WantedBookRepo extends JpaRepository<WantedBook, Long> {
 
@@ -11,7 +11,7 @@ public interface WantedBookRepo extends JpaRepository<WantedBook, Long> {
     boolean existsByUserIdAndBookId(Long userId, Long bookId);
 
     // Найти все "хочу" книги пользователя
-    List<WantedBook> findByUserId(Long userId);
+    Page<WantedBook> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     // Удалить "хотелку"
     void deleteByUserIdAndBookId(Long userId, Long bookId);

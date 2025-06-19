@@ -1,8 +1,6 @@
 package org.bookswap.messaging.repository;
 
 import org.bookswap.messaging.entity.Dialog;
-import org.bookswap.auth.entity.User;
-import org.bookswap.listings.entity.Listing;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,9 +9,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface DialogRepo extends JpaRepository<Dialog, Long> {
-
-    // Найти диалог между двумя пользователями по объявлению (уникальный)
-    Optional<Dialog> findByUser1AndUser2AndListing(User user1, User user2, Listing listing);
 
     // Получить все диалоги пользователя
     @Query("""
@@ -24,17 +19,6 @@ public interface DialogRepo extends JpaRepository<Dialog, Long> {
     ) DESC
 """)
     List<Dialog> findUserDialogsOrderedByLastMessage(@Param("userId") Long userId);
-
-
-    // Все диалоги по объявлению (например, для владельца)
-    @Query("""
-    SELECT d FROM Dialog d
-    WHERE d.listing.id = :listingId
-    ORDER BY (
-        SELECT MAX(m.createdAt) FROM Message m WHERE m.dialog = d
-    ) DESC
-""")
-    List<Dialog> findDialogsByListingOrderedByLastMessage(@Param("listingId") Long listingId);
 
     @Query("""
 SELECT d FROM Dialog d

@@ -14,6 +14,7 @@ import org.bookswap.common.exception.BadRequestException;
 import org.bookswap.common.exception.ConflictException;
 import org.bookswap.common.exception.NotFoundException;
 import org.bookswap.common.exception.UnauthorizedException;
+import org.bookswap.listings.dto.CityDto;
 import org.bookswap.listings.entity.City;
 import org.bookswap.listings.repository.CityRepo;
 import org.bookswap.listings.repository.ListingRepo;
@@ -240,7 +241,12 @@ public class AuthUseCase {
                 u.getAvatarUrl(),
                 u.getRole().name(),
                 u.isBanned(),
-                u.getCity() != null ? u.getCity().getId() : null
+                u.getCity() != null ? new CityDto(
+                        u.getCity().getId(),
+                        u.getCity().getName(),
+                        u.getCity().getRegion(),
+                        u.getCity().getCountry()
+                ) : null
         );
     }
 }

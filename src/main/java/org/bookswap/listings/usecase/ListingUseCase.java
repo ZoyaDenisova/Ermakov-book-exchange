@@ -1,6 +1,5 @@
 package org.bookswap.listings.usecase;
 
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.bookswap.auth.entity.User;
 import org.bookswap.auth.repository.UserRepo;
@@ -12,10 +11,7 @@ import org.bookswap.catalog.repository.BookRepo;
 import org.bookswap.common.exception.BadRequestException;
 import org.bookswap.common.exception.ForbiddenException;
 import org.bookswap.common.exception.NotFoundException;
-import org.bookswap.listings.dto.CreateListingDto;
-import org.bookswap.listings.dto.ListingDto;
-import org.bookswap.listings.dto.ListingFilterDto;
-import org.bookswap.listings.dto.UpdateListingDto;
+import org.bookswap.listings.dto.*;
 import org.bookswap.listings.entity.City;
 import org.bookswap.listings.entity.Listing;
 import org.bookswap.listings.entity.ListingImage;
@@ -24,8 +20,10 @@ import org.bookswap.listings.repository.ListingImageRepo;
 import org.bookswap.listings.repository.ListingRepo;
 import org.bookswap.shared.image.ImageService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -188,6 +186,22 @@ public class ListingUseCase {
         listing.setBlocked(false);
     }
 
+    @Transactional(readOnly = true)
+    public Page<ListingDto> getAllVisibleListingsByUser(Long userId, Pageable pageable) {
+        return listingRepo.findAllVisibleByUserIdOrdered(userId, pageable)
+                .map(this::toDto);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CityDto> searchCities(String query) {
+        if (query == null || query.isBlank()) return List.of();
+
+        Pageable pageable = PageRequest.of(0, 10); // лимит по умолчанию
+        return cityRepo.searchCityByNameOrRegion(query, pageable).stream()
+                .map(this::toDto)
+                .toList();
+    }
+
     private User getActiveUser(Long userId) {
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
@@ -195,24 +209,33 @@ public class ListingUseCase {
         return user;
     }
 
-    private ListingDto toDto(Listing listing) {
-        List<String> urls = imageRepo.findByListingId(listing.getId()).stream()
-                .map(ListingImage::getUrl)
-                .toList();
+    private CityDto toDto(City city) {
+        return new CityDto(
+                city.getId(),
+                city.getName(),
+                city.getRegion(),
+                city.getCountry()
+        );
+    }
 
+    private ListingDto toDto(Listing l) {
         return new ListingDto(
-                listing.getId(),
-                listing.getBook().getId(),
-                listing.getBook().getTitle(),
-                listing.getBook().getAuthor(),
-                listing.getCondition(),
-                listing.getCity().getId(),
-                listing.getCity().getName(),
-                urls,
-                listing.isOpen(),
-                listing.isBlocked(),
-                listing.getOwner().getId(),
-                listing.getCreatedAt()
+                l.getId(),
+                l.getBook().getId(),
+                l.getBook().getTitle(),
+                l.getBook().getAuthor(),
+                l.getBook().getDescription(), // новое
+                l.getCondition(),
+                l.getCity().getId(),
+                l.getCity().getName(),
+                imageRepo.findByListingId(l.getId()).stream()
+                        .map(ListingImage::getUrl)
+                        .toList(),
+                l.isOpen(),
+                l.isBlocked(),
+                l.getOwner().getId(),
+                l.getOwner().getName(), // новое
+                l.getCreatedAt()
         );
     }
 }

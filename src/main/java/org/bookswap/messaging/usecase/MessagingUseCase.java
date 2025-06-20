@@ -159,11 +159,16 @@ public class MessagingUseCase {
         SecurityUtil.assertNotBanned(sender);
 
         User receiver = listing.getOwner();
-        if (receiver.getId().equals(userId)) {
-            throw new BadRequestException("Cannot send message to your own listing");
+
+        Optional<Dialog> existing = dialogRepo.findBetweenUsersForListing(userId, receiver.getId(), listing.getId());
+        boolean isOwnListing = receiver.getId().equals(userId);
+
+        // Если диалога ещё нет — не даём создать с собой
+        if (existing.isEmpty() && isOwnListing) {
+            throw new BadRequestException("Cannot start dialog with your own listing");
         }
 
-        Dialog dialog = getOrCreateDialog(userId, receiver.getId(), listing);
+        Dialog dialog = existing.orElseGet(() -> createDialog(userId, receiver.getId(), listing));
 
         if (images != null && images.size() > 3)
             throw new BadRequestException("Maximum 3 images allowed");
@@ -183,6 +188,7 @@ public class MessagingUseCase {
         }
     }
 
+
     @Transactional
     public void sendExchangeProposal(Long userId, Long listingId, Long offeredListingId) {
         Listing selected = listingRepo.findById(listingId)
@@ -193,11 +199,13 @@ public class MessagingUseCase {
         SecurityUtil.assertNotBanned(sender);
 
         User receiver = selected.getOwner();
-        if (receiver.getId().equals(userId)) {
-            throw new BadRequestException("Cannot propose exchange to your own listing");
+
+        Optional<Dialog> existing = dialogRepo.findBetweenUsersForListing(userId, receiver.getId(), selected.getId());
+        if (existing.isEmpty() && receiver.getId().equals(userId)) {
+            throw new BadRequestException("Cannot start dialog with your own listing");
         }
 
-        Dialog dialog = getOrCreateDialog(userId, receiver.getId(), selected);
+        Dialog dialog = existing.orElseGet(() -> createDialog(userId, receiver.getId(), selected));
 
         ExchangeCreateDto dto = new ExchangeCreateDto(offeredListingId, selected.getId());
         Exchange exchange = exchangeUseCase.proposeExchangeEntity(userId, dto);
@@ -214,19 +222,17 @@ public class MessagingUseCase {
         messageRepo.save(msg);
     }
 
-    private Dialog getOrCreateDialog(Long user1Id, Long user2Id, Listing listing) {
+    private Dialog createDialog(Long user1Id, Long user2Id, Listing listing) {
         Long lowId = Math.min(user1Id, user2Id);
         Long highId = Math.max(user1Id, user2Id);
 
-        return dialogRepo.findBetweenUsersForListing(lowId, highId, listing.getId())
-                .orElseGet(() -> {
-                    Dialog d = Dialog.builder()
-                            .user1(userRepo.findById(lowId).orElseThrow(() -> new NotFoundException("User1 not found")))
-                            .user2(userRepo.findById(highId).orElseThrow(() -> new NotFoundException("User2 not found")))
-                            .listing(listing)
-                            .build();
-                    return dialogRepo.save(d);
-                });
-    }
+        User lowUser = userRepo.findById(lowId).orElseThrow(() -> new NotFoundException("User1 not found"));
+        User highUser = userRepo.findById(highId).orElseThrow(() -> new NotFoundException("User2 not found"));
 
+        return dialogRepo.save(Dialog.builder()
+                .user1(lowUser)
+                .user2(highUser)
+                .listing(listing)
+                .build());
+    }
 }

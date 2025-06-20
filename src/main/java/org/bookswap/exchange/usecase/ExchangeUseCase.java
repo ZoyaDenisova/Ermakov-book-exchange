@@ -1,8 +1,14 @@
 package org.bookswap.exchange.usecase;
 
 import lombok.RequiredArgsConstructor;
-import org.bookswap.auth.repository.UserRepo;
+import org.bookswap.auth.dto.UserDto;
+import org.bookswap.auth.entity.User;
 import org.bookswap.auth.security.SecurityUtil;
+import org.bookswap.catalog.dto.BookDto;
+import org.bookswap.catalog.entity.Book;
+import org.bookswap.catalog.entity.BookImage;
+import org.bookswap.catalog.entity.Genre;
+import org.bookswap.catalog.repository.BookImageRepo;
 import org.bookswap.common.exception.BadRequestException;
 import org.bookswap.common.exception.ConflictException;
 import org.bookswap.common.exception.ForbiddenException;
@@ -13,14 +19,20 @@ import org.bookswap.exchange.dto.ExchangeFilterDto;
 import org.bookswap.exchange.entity.Exchange;
 import org.bookswap.exchange.entity.ExchangeStatus;
 import org.bookswap.exchange.repository.ExchangeRepo;
+import org.bookswap.listings.dto.CityDto;
+import org.bookswap.listings.dto.ListingDto;
+import org.bookswap.listings.entity.City;
 import org.bookswap.listings.entity.Listing;
+import org.bookswap.listings.entity.ListingImage;
+import org.bookswap.listings.repository.ListingImageRepo;
 import org.bookswap.listings.repository.ListingRepo;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +40,8 @@ public class ExchangeUseCase {
 
     private final ExchangeRepo exchangeRepo;
     private final ListingRepo listingRepo;
-    private final UserRepo userRepo;
+    private final ListingImageRepo listingImageRepo;
+    private final BookImageRepo bookImageRepo;
 
     @Transactional
     public ExchangeDto proposeExchange(Long senderId, ExchangeCreateDto dto) {
@@ -150,12 +163,43 @@ public class ExchangeUseCase {
 
 
     public ExchangeDto toDto(Exchange e) {
+        User sender = e.getSender();
+        User receiver = e.getReceiver();
+        Listing offered = e.getOffered();
+        Listing selected = e.getSelected();
+
         return new ExchangeDto(
                 e.getId(),
-                e.getSender().getId(),
-                e.getReceiver().getId(),
-                e.getOffered().getId(),
-                e.getSelected().getId(),
+                new UserDto(
+                        sender.getId(),
+                        sender.getName(),
+                        sender.getEmail(),
+                        sender.getAvatarUrl(),
+                        sender.getRole().name(),
+                        sender.isBanned(),
+                        new CityDto(
+                                sender.getCity().getId(),
+                                sender.getCity().getName(),
+                                sender.getCity().getRegion(),
+                                sender.getCity().getCountry()
+                        )
+                ),
+                new UserDto(
+                        receiver.getId(),
+                        receiver.getName(),
+                        receiver.getEmail(),
+                        receiver.getAvatarUrl(),
+                        receiver.getRole().name(),
+                        receiver.isBanned(),
+                        new CityDto(
+                                receiver.getCity().getId(),
+                                receiver.getCity().getName(),
+                                receiver.getCity().getRegion(),
+                                receiver.getCity().getCountry()
+                        )
+                ),
+                toListingDto(offered),
+                toListingDto(selected),
                 e.getStatus(),
                 e.isSenderConfirmedCompletion(),
                 e.isReceiverConfirmedCompletion(),
@@ -163,4 +207,62 @@ public class ExchangeUseCase {
                 e.getCompletedAt()
         );
     }
+    private ListingDto toListingDto(Listing listing) {
+        Book book = listing.getBook();
+        User owner = listing.getOwner();
+        City city = listing.getCity();
+        City ownerCity = owner.getCity();
+
+        List<String> imageUrls = listingImageRepo.findByListingId(listing.getId()).stream()
+                .map(ListingImage::getUrl)
+                .toList();
+
+        String bookImageUrl = bookImageRepo.findByBookId(book.getId()).stream()
+                .map(BookImage::getUrl)
+                .findFirst()
+                .orElse(null);
+
+        return new ListingDto(
+                listing.getId(),
+                new BookDto(
+                        book.getId(),
+                        book.getTitle(),
+                        book.getAuthor(),
+                        book.getYear(),
+                        book.getDescription(),
+                        book.getGenres().stream().map(Genre::getName).toList(),
+                        book.getAgeCategory(),
+                        bookImageUrl,
+                        book.getModerationStatus(),
+                        book.getCreatedBy() != null ? book.getCreatedBy().getId() : null,
+                        book.getCreatedAt()
+                ),
+                new CityDto(
+                        city.getId(),
+                        city.getName(),
+                        city.getRegion(),
+                        city.getCountry()
+                ),
+                new UserDto(
+                        owner.getId(),
+                        owner.getName(),
+                        owner.getEmail(),
+                        owner.getAvatarUrl(),
+                        owner.getRole().name(),
+                        owner.isBanned(),
+                        new CityDto(
+                                ownerCity.getId(),
+                                ownerCity.getName(),
+                                ownerCity.getRegion(),
+                                ownerCity.getCountry()
+                        )
+                ),
+                listing.getCondition(),
+                imageUrls,
+                listing.isOpen(),
+                listing.isBlocked(),
+                listing.getCreatedAt()
+        );
+    }
+
 }

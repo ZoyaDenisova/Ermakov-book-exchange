@@ -1,18 +1,26 @@
 package org.bookswap.reviews.usecase;
 
 import lombok.RequiredArgsConstructor;
+import org.bookswap.auth.dto.UserDto;
 import org.bookswap.auth.entity.Role;
 import org.bookswap.auth.entity.User;
 import org.bookswap.auth.repository.UserRepo;
 import org.bookswap.auth.security.SecurityUtil;
+import org.bookswap.catalog.dto.BookDto;
 import org.bookswap.catalog.entity.Book;
 import org.bookswap.catalog.entity.BookImage;
+import org.bookswap.catalog.entity.Genre;
 import org.bookswap.catalog.entity.ModerationStatus;
 import org.bookswap.catalog.repository.BookImageRepo;
 import org.bookswap.common.exception.BadRequestException;
 import org.bookswap.common.exception.ConflictException;
 import org.bookswap.common.exception.NotFoundException;
+import org.bookswap.listings.dto.CityDto;
+import org.bookswap.listings.dto.ListingDto;
+import org.bookswap.listings.entity.City;
 import org.bookswap.listings.entity.Listing;
+import org.bookswap.listings.entity.ListingImage;
+import org.bookswap.listings.repository.ListingImageRepo;
 import org.bookswap.listings.repository.ListingRepo;
 import org.bookswap.reviews.dto.ComplaintDto;
 import org.bookswap.reviews.dto.CreateComplaintDto;
@@ -47,6 +55,7 @@ public class ReviewUseCase {
     private final ReviewImageRepo reviewImageRepo;
     private final ComplaintImageRepo complaintImageRepo;
     private final ListingRepo listingRepo;
+    private final ListingImageRepo listingImageRepo;
     private final UserRepo userRepo;
     private final ImageService imageService;
     private final BookImageRepo bookImageRepo;
@@ -202,10 +211,19 @@ public class ReviewUseCase {
     private ReviewDto toDto(Review review) {
         Listing listing = review.getListing();
         Book book = listing.getBook();
-        User fromUser = review.getFromUser();
+        User from = review.getFromUser();
+        User to = review.getToUser();
 
-        List<String> imageUrls = reviewImageRepo.findByReviewId(review.getId()).stream()
+        City cityFrom = from.getCity();
+        City cityTo = to.getCity();
+        City cityOwner = listing.getOwner().getCity();
+
+        List<String> reviewImageUrls = reviewImageRepo.findByReviewId(review.getId()).stream()
                 .map(ReviewImage::getUrl)
+                .toList();
+
+        List<String> listingImageUrls = listingImageRepo.findByListingId(listing.getId()).stream()
+                .map(ListingImage::getUrl)
                 .toList();
 
         String bookImageUrl = bookImageRepo.findByBookId(book.getId()).stream()
@@ -215,18 +233,79 @@ public class ReviewUseCase {
 
         return new ReviewDto(
                 review.getId(),
-                listing.getId(),
-                fromUser.getId(),
-                fromUser.getName(),
-                fromUser.getAvatarUrl(),
-                review.getToUser().getId(),
+                new ListingDto(
+                        listing.getId(),
+                        new BookDto(
+                                book.getId(),
+                                book.getTitle(),
+                                book.getAuthor(),
+                                book.getYear(),
+                                book.getDescription(),
+                                book.getGenres().stream().map(Genre::getName).toList(),
+                                book.getAgeCategory(),
+                                bookImageUrl,
+                                book.getModerationStatus(),
+                                book.getCreatedBy() != null ? book.getCreatedBy().getId() : null,
+                                book.getCreatedAt()
+                        ),
+                        new CityDto(
+                                cityOwner.getId(),
+                                cityOwner.getName(),
+                                cityOwner.getRegion(),
+                                cityOwner.getCountry()
+                        ),
+                        new UserDto(
+                                listing.getOwner().getId(),
+                                listing.getOwner().getName(),
+                                listing.getOwner().getEmail(),
+                                listing.getOwner().getAvatarUrl(),
+                                listing.getOwner().getRole().name(),
+                                listing.getOwner().isBanned(),
+                                new CityDto(
+                                        cityOwner.getId(),
+                                        cityOwner.getName(),
+                                        cityOwner.getRegion(),
+                                        cityOwner.getCountry()
+                                )
+                        ),
+                        listing.getCondition(),
+                        listingImageUrls,
+                        listing.isOpen(),
+                        listing.isBlocked(),
+                        listing.getCreatedAt()
+                ),
+                new UserDto(
+                        from.getId(),
+                        from.getName(),
+                        from.getEmail(),
+                        from.getAvatarUrl(),
+                        from.getRole().name(),
+                        from.isBanned(),
+                        new CityDto(
+                                cityFrom.getId(),
+                                cityFrom.getName(),
+                                cityFrom.getRegion(),
+                                cityFrom.getCountry()
+                        )
+                ),
+                new UserDto(
+                        to.getId(),
+                        to.getName(),
+                        to.getEmail(),
+                        to.getAvatarUrl(),
+                        to.getRole().name(),
+                        to.isBanned(),
+                        new CityDto(
+                                cityTo.getId(),
+                                cityTo.getName(),
+                                cityTo.getRegion(),
+                                cityTo.getCountry()
+                        )
+                ),
                 review.getRating(),
                 review.getComment(),
                 review.getModerationStatus(),
-                imageUrls,
-                book.getTitle(),
-                book.getAuthor(),
-                bookImageUrl,
+                reviewImageUrls,
                 review.getCreatedAt()
         );
     }

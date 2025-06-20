@@ -1,12 +1,17 @@
 package org.bookswap.listings.usecase;
 
 import lombok.RequiredArgsConstructor;
+import org.bookswap.auth.dto.UserDto;
 import org.bookswap.auth.entity.User;
 import org.bookswap.auth.repository.UserRepo;
 import org.bookswap.auth.security.AuthContext;
 import org.bookswap.auth.security.SecurityUtil;
+import org.bookswap.catalog.dto.BookDto;
 import org.bookswap.catalog.entity.AgeCategory;
 import org.bookswap.catalog.entity.Book;
+import org.bookswap.catalog.entity.BookImage;
+import org.bookswap.catalog.entity.Genre;
+import org.bookswap.catalog.repository.BookImageRepo;
 import org.bookswap.catalog.repository.BookRepo;
 import org.bookswap.common.exception.BadRequestException;
 import org.bookswap.common.exception.ForbiddenException;
@@ -39,6 +44,7 @@ public class ListingUseCase {
 
     private final ListingRepo listingRepo;
     private final BookRepo bookRepo;
+    private final BookImageRepo bookImageRepo;
     private final UserRepo userRepo;
     private final CityRepo cityRepo;
     private final ListingImageRepo imageRepo;
@@ -218,24 +224,62 @@ public class ListingUseCase {
         );
     }
 
-    private ListingDto toDto(Listing l) {
+    private ListingDto toDto(Listing listing) {
+        Book book = listing.getBook();
+        User owner = listing.getOwner();
+        City city = listing.getCity();
+        City ownerCity = owner.getCity();
+
+        List<String> listingImageUrls = imageRepo.findByListingId(listing.getId()).stream()
+                .map(ListingImage::getUrl)
+                .toList();
+
+        String bookImageUrl = bookImageRepo.findByBookId(book.getId()).stream()
+                .map(BookImage::getUrl)
+                .findFirst()
+                .orElse(null);
+
         return new ListingDto(
-                l.getId(),
-                l.getBook().getId(),
-                l.getBook().getTitle(),
-                l.getBook().getAuthor(),
-                l.getBook().getDescription(), // новое
-                l.getCondition(),
-                l.getCity().getId(),
-                l.getCity().getName(),
-                imageRepo.findByListingId(l.getId()).stream()
-                        .map(ListingImage::getUrl)
-                        .toList(),
-                l.isOpen(),
-                l.isBlocked(),
-                l.getOwner().getId(),
-                l.getOwner().getName(), // новое
-                l.getCreatedAt()
+                listing.getId(),
+                new BookDto(
+                        book.getId(),
+                        book.getTitle(),
+                        book.getAuthor(),
+                        book.getYear(),
+                        book.getDescription(),
+                        book.getGenres().stream().map(Genre::getName).toList(),
+                        book.getAgeCategory(),
+                        bookImageUrl,
+                        book.getModerationStatus(),
+                        book.getCreatedBy() != null ? book.getCreatedBy().getId() : null,
+                        book.getCreatedAt()
+                ),
+                new CityDto(
+                        city.getId(),
+                        city.getName(),
+                        city.getRegion(),
+                        city.getCountry()
+                ),
+                new UserDto(
+                        owner.getId(),
+                        owner.getName(),
+                        owner.getEmail(),
+                        owner.getAvatarUrl(),
+                        owner.getRole().name(),
+                        owner.isBanned(),
+                        new CityDto(
+                                ownerCity.getId(),
+                                ownerCity.getName(),
+                                ownerCity.getRegion(),
+                                ownerCity.getCountry()
+                        )
+                ),
+                listing.getCondition(),
+                listingImageUrls,
+                listing.isOpen(),
+                listing.isBlocked(),
+                listing.getCreatedAt()
         );
     }
+
 }

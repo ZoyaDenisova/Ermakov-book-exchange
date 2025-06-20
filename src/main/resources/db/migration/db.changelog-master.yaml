@@ -48,3 +48,13 @@ databaseChangeLog:
             splitStatements: true
             endDelimiter: ;
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: rename_users_in_dialog
+      author: me
+      changes:
+        - sqlFile:
+            path: 006_rename_users_in_dialog.sql
+            splitStatements: true
+            endDelimiter: ;
+            relativeToChangelogFile: true

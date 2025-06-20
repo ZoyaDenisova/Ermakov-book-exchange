@@ -16,12 +16,12 @@ public class Dialog {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user1_id")
-    private User user1;
+    @JoinColumn(name = "owner_id")
+    private User owner;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user2_id")
-    private User user2;
+    @JoinColumn(name = "other_participant_id")
+    private User otherParticipant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "listing_id")

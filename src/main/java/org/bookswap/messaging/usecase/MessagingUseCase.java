@@ -5,11 +5,9 @@ import org.bookswap.auth.entity.User;
 import org.bookswap.auth.repository.UserRepo;
 import org.bookswap.auth.security.SecurityUtil;
 import org.bookswap.catalog.entity.Book;
-import org.bookswap.common.exception.BadRequestException;
 import org.bookswap.common.exception.ForbiddenException;
 import org.bookswap.common.exception.NotFoundException;
 import org.bookswap.exchange.dto.ExchangeCreateDto;
-import org.bookswap.exchange.dto.ExchangeDto;
 import org.bookswap.exchange.entity.Exchange;
 import org.bookswap.exchange.usecase.ExchangeUseCase;
 import org.bookswap.listings.entity.Listing;
@@ -49,46 +47,33 @@ public class MessagingUseCase {
     private final UserRepo userRepo;
     private final ImageService imageService;
 
-    @Transactional(readOnly = true)
     public List<DialogDto> getUserDialogs(Long userId) {
-        List<Dialog> dialogs = dialogRepo.findUserDialogsOrderedByLastMessage(userId);
-        return dialogs.stream().map(dialog -> {
+        return dialogRepo.findUserDialogsOrderedByLastMessage(userId).stream().map(dialog -> {
             Listing listing = dialog.getListing();
             Book book = listing.getBook();
             User owner = listing.getOwner();
 
             Optional<Message> lastMsg = messageRepo.findTop1ByDialogIdOrderByCreatedAtDesc(dialog.getId());
             String lastContent = lastMsg.map(Message::getContent).orElse(null);
-            String lastAuthor = lastMsg.map(msg -> msg.getAuthor().getName()).orElse(null);
+            String lastAuthor = lastMsg.map(m -> m.getAuthor().getName()).orElse(null);
             LocalDateTime lastTime = lastMsg.map(Message::getCreatedAt).orElse(null);
 
             String imgUrl = listingImageRepo.findByListingId(listing.getId()).stream()
                     .map(ListingImage::getUrl).findFirst().orElse(null);
 
             return new DialogDto(
-                    dialog.getId(),
-                    listing.getId(),
-                    book.getTitle(),
-                    book.getAuthor(),
-                    imgUrl,
-                    listing.getCondition().name(),
-                    owner.getId(),
-                    owner.getName(),
-                    owner.getAvatarUrl(),
-                    lastContent,
-                    lastAuthor,
-                    lastTime
+                    dialog.getId(), listing.getId(), book.getTitle(), book.getAuthor(), imgUrl,
+                    listing.getCondition().name(), owner.getId(), owner.getName(), owner.getAvatarUrl(),
+                    lastContent, lastAuthor, lastTime
             );
         }).toList();
     }
 
-    @Transactional(readOnly = true)
     public DialogDto getDialogDetails(Long dialogId, Long userId) {
         Dialog dialog = dialogRepo.findById(dialogId)
                 .orElseThrow(() -> new NotFoundException("Dialog not found"));
 
-        if (!dialog.getUser1().getId().equals(userId) && !dialog.getUser2().getId().equals(userId))
-            throw new ForbiddenException("Access denied");
+        if (!isParticipant(dialog, userId)) throw new ForbiddenException("Access denied");
 
         Listing listing = dialog.getListing();
         Book book = listing.getBook();
@@ -96,94 +81,85 @@ public class MessagingUseCase {
 
         Optional<Message> lastMsg = messageRepo.findTop1ByDialogIdOrderByCreatedAtDesc(dialog.getId());
         String lastContent = lastMsg.map(Message::getContent).orElse(null);
-        String lastAuthor = lastMsg.map(msg -> msg.getAuthor().getName()).orElse(null);
+        String lastAuthor = lastMsg.map(m -> m.getAuthor().getName()).orElse(null);
         LocalDateTime lastTime = lastMsg.map(Message::getCreatedAt).orElse(null);
 
         String imgUrl = listingImageRepo.findByListingId(listing.getId()).stream()
                 .map(ListingImage::getUrl).findFirst().orElse(null);
 
         return new DialogDto(
-                dialog.getId(),
-                listing.getId(),
-                book.getTitle(),
-                book.getAuthor(),
-                imgUrl,
-                listing.getCondition().name(),
-                owner.getId(),
-                owner.getName(),
-                owner.getAvatarUrl(),
-                lastContent,
-                lastAuthor,
-                lastTime
+                dialog.getId(), listing.getId(), book.getTitle(), book.getAuthor(), imgUrl,
+                listing.getCondition().name(), owner.getId(), owner.getName(), owner.getAvatarUrl(),
+                lastContent, lastAuthor, lastTime
         );
     }
 
-    @Transactional(readOnly = true)
     public List<MessageDto> getMessages(Long dialogId, Long userId, int page, int size) {
         Dialog dialog = dialogRepo.findById(dialogId)
                 .orElseThrow(() -> new NotFoundException("Dialog not found"));
 
-        if (!dialog.getUser1().getId().equals(userId) && !dialog.getUser2().getId().equals(userId))
-            throw new ForbiddenException("Access denied");
+        if (!isParticipant(dialog, userId)) throw new ForbiddenException("Access denied");
 
         Page<Message> messages = messageRepo.findByDialogIdOrderByCreatedAtDesc(dialogId, PageRequest.of(page, size));
-
-        return messages.stream().map(msg -> {
-            List<String> images = chatImageRepo.findByMessageId(msg.getId()).stream()
-                    .map(ChatImage::getUrl).toList();
-
-            ExchangeDto exchangeDto = msg.getExchange() != null
-                    ? exchangeUseCase.toDto(msg.getExchange())
-                    : null;
-
-            return new MessageDto(
-                    msg.getId(),
-                    msg.getAuthor().getId(),
-                    msg.getAuthor().getName(),
-                    msg.getContent(),
-                    images,
-                    exchangeDto,
-                    msg.isExchangeProposal(),
-                    msg.getCreatedAt()
-            );
-        }).toList();
+        return messages.stream().map(msg -> new MessageDto(
+                msg.getId(), msg.getAuthor().getId(), msg.getAuthor().getName(),
+                msg.getContent(),
+                chatImageRepo.findByMessageId(msg.getId()).stream().map(ChatImage::getUrl).toList(),
+                msg.getExchange() != null ? exchangeUseCase.toDto(msg.getExchange()) : null,
+                msg.isExchangeProposal(),
+                msg.getCreatedAt()
+        )).toList();
     }
 
     @Transactional
-    public void sendMessage(Long userId, Long listingId, String content, List<MultipartFile> images) {
+    public void sendMessage(
+            Long userId,
+            Long listingId,
+            String content,
+            List<MultipartFile> images
+    ) {
+        // 1) Подтягиваем sender и listing
+        User sender  = userRepo.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
         Listing listing = listingRepo.findById(listingId)
                 .orElseThrow(() -> new NotFoundException("Listing not found"));
 
-        User sender = userRepo.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
-        SecurityUtil.assertNotBanned(sender);
+        // 2) Ищем существующий диалог
+        Dialog dialog = dialogRepo
+                .findByListingIdAndUserId(listingId, userId)
+                .orElseGet(() -> dialogRepo.save(
+                        Dialog.builder()
+                                .listing(listing)
+                                .owner(listing.getOwner())
+                                .otherParticipant(sender)
+                                .build()
+                ));
 
-        User receiver = listing.getOwner();
-
-        Optional<Dialog> existing = dialogRepo.findBetweenUsersForListing(userId, receiver.getId(), listing.getId());
-        boolean isOwnListing = receiver.getId().equals(userId);
-
-        // Если диалога ещё нет — не даём создать с собой
-        if (existing.isEmpty() && isOwnListing) {
-            throw new BadRequestException("Cannot start dialog with your own listing");
+        // 3) Проверяем, что пользователь — участник
+        if (!userId.equals(dialog.getOwner().getId()) &&
+                !userId.equals(dialog.getOtherParticipant().getId())) {
+            throw new ForbiddenException("Вы не участник диалога");
         }
 
-        Dialog dialog = existing.orElseGet(() -> createDialog(userId, receiver.getId(), listing));
-
-        if (images != null && images.size() > 3)
-            throw new BadRequestException("Maximum 3 images allowed");
-
-        Message msg = messageRepo.save(Message.builder()
+        // 4) Сохраняем само сообщение
+        Message message = Message.builder()
                 .dialog(dialog)
                 .author(sender)
                 .content(content)
                 .createdAt(LocalDateTime.now())
-                .build());
+                .build();
+        message = messageRepo.save(message);
 
+        // 5) Сохраняем картинки (ваш код)
         if (images != null) {
             for (MultipartFile file : images) {
-                String url = imageService.saveImage("messages", msg.getId(), file);
-                chatImageRepo.save(ChatImage.builder().message(msg).url(url).build());
+                String url = imageService.saveImage("messages", message.getId(), file);
+                chatImageRepo.save(
+                        ChatImage.builder()
+                                .message(message)
+                                .url(url)
+                                .build()
+                );
             }
         }
     }
@@ -191,25 +167,40 @@ public class MessagingUseCase {
 
     @Transactional
     public void sendExchangeProposal(Long userId, Long listingId, Long offeredListingId) {
+        // 1) Загружаем сущности
         Listing selected = listingRepo.findById(listingId)
                 .orElseThrow(() -> new NotFoundException("Listing not found"));
-
         User sender = userRepo.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
         SecurityUtil.assertNotBanned(sender);
 
-        User receiver = selected.getOwner();
+        User owner = selected.getOwner();
 
-        Optional<Dialog> existing = dialogRepo.findBetweenUsersForListing(userId, receiver.getId(), selected.getId());
-        if (existing.isEmpty() && receiver.getId().equals(userId)) {
-            throw new BadRequestException("Cannot start dialog with your own listing");
+        // 2) Ищем существующий диалог по listingId и userId
+        Dialog dialog = dialogRepo
+                .findByListingIdAndUserId(listingId, userId)
+                .orElseGet(() -> dialogRepo.save(
+                        Dialog.builder()
+                                .listing(selected)
+                                .owner(owner)
+                                .otherParticipant(sender)
+                                .build()
+                ));
+
+        // 3) Проверяем, что текущий юзер действительно участник
+        Long oId = dialog.getOwner().getId();
+        Long pId = dialog.getOtherParticipant().getId();
+        if (!userId.equals(oId) && !userId.equals(pId)) {
+            throw new ForbiddenException("You are not a participant of this dialog");
         }
 
-        Dialog dialog = existing.orElseGet(() -> createDialog(userId, receiver.getId(), selected));
+        // 4) Создаём сущность обмена
+        Exchange exchange = exchangeUseCase.proposeExchangeEntity(
+                userId,
+                new ExchangeCreateDto(offeredListingId, listingId)
+        );
 
-        ExchangeCreateDto dto = new ExchangeCreateDto(offeredListingId, selected.getId());
-        Exchange exchange = exchangeUseCase.proposeExchangeEntity(userId, dto);
-
+        // 5) Сохраняем сообщение с предложением обмена
         Message msg = Message.builder()
                 .dialog(dialog)
                 .author(sender)
@@ -218,21 +209,29 @@ public class MessagingUseCase {
                 .isExchangeProposal(true)
                 .createdAt(LocalDateTime.now())
                 .build();
-
         messageRepo.save(msg);
     }
 
-    private Dialog createDialog(Long user1Id, Long user2Id, Listing listing) {
-        Long lowId = Math.min(user1Id, user2Id);
-        Long highId = Math.max(user1Id, user2Id);
 
-        User lowUser = userRepo.findById(lowId).orElseThrow(() -> new NotFoundException("User1 not found"));
-        User highUser = userRepo.findById(highId).orElseThrow(() -> new NotFoundException("User2 not found"));
+//    public Long createDialogOnly(Long userId, Long listingId) {
+//        Listing listing = listingRepo.findById(listingId)
+//                .orElseThrow(() -> new NotFoundException("Listing not found"));
+//        User sender = userRepo.findById(userId)
+//                .orElseThrow(() -> new NotFoundException("User not found"));
+//        SecurityUtil.assertNotBanned(sender);
+//
+//        User owner = listing.getOwner();
+//
+//        return dialogRepo.findDialogAnyDirection(userId, owner.getId(), listingId)
+//                .map(Dialog::getId)
+//                .orElseGet(() -> dialogRepo.save(Dialog.builder()
+//                        .owner(owner)
+//                        .otherParticipant(sender)
+//                        .listing(listing)
+//                        .build()).getId());
+//    }
 
-        return dialogRepo.save(Dialog.builder()
-                .user1(lowUser)
-                .user2(highUser)
-                .listing(listing)
-                .build());
+    private boolean isParticipant(Dialog dialog, Long userId) {
+        return dialog.getOwner().getId().equals(userId) || dialog.getOtherParticipant().getId().equals(userId);
     }
 }

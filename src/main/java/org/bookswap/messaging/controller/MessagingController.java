@@ -48,6 +48,18 @@ public class MessagingController {
         return ResponseEntity.ok(messagingUseCase.getMessages(id, ctx.getUserId(), page, size));
     }
 
+//    @Operation(summary = "Создать диалог с владельцем объявления (без сообщений)")
+//    @PostMapping("/listing/{listingId}/create-dialog")
+//    public ResponseEntity<Long> createDialog(
+//            @PathVariable Long listingId,
+//            HttpServletRequest request
+//    ) {
+//        AuthContext ctx = new AuthContext(request, tokenManager);
+//        Long dialogId = messagingUseCase.createDialogOnly(ctx.getUserId(), listingId);
+//        return ResponseEntity.ok(dialogId);
+//    }
+
+
     @Operation(summary = "Отправить сообщение по объявлению (текст и до 3 фото)")
     @PostMapping(value = "/listing/{listingId}/send", consumes = "multipart/form-data")
     public ResponseEntity<Void> sendMessage(

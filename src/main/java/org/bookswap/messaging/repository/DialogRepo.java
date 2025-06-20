@@ -10,24 +10,24 @@ import java.util.Optional;
 
 public interface DialogRepo extends JpaRepository<Dialog, Long> {
 
-    // Получить все диалоги пользователя
+    // Получить все диалоги пользователя (и владельца, и участника)
     @Query("""
-    SELECT d FROM Dialog d
-    WHERE d.user1.id = :userId OR d.user2.id = :userId
-    ORDER BY (
-        SELECT MAX(m.createdAt) FROM Message m WHERE m.dialog = d
-    ) DESC
-""")
+        SELECT d FROM Dialog d
+        WHERE d.owner.id = :userId OR d.otherParticipant.id = :userId
+        ORDER BY (
+            SELECT MAX(m.createdAt) FROM Message m WHERE m.dialog = d
+        ) DESC
+    """)
     List<Dialog> findUserDialogsOrderedByLastMessage(@Param("userId") Long userId);
 
     @Query("""
-SELECT d FROM Dialog d
-WHERE ((d.user1.id = :user1Id AND d.user2.id = :user2Id) OR (d.user1.id = :user2Id AND d.user2.id = :user1Id))
-  AND d.listing.id = :listingId
-""")
-    Optional<Dialog> findBetweenUsersForListing(@Param("user1Id") Long user1Id,
-                                                @Param("user2Id") Long user2Id,
-                                                @Param("listingId") Long listingId);
-
+        select d
+        from Dialog d
+        where d.listing.id = :listingId
+          and (d.owner.id = :userId or d.otherParticipant.id = :userId)
+        """)
+    Optional<Dialog> findByListingIdAndUserId(
+            @Param("listingId") Long listingId,
+            @Param("userId")    Long userId
+    );
 }
-

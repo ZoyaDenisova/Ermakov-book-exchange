@@ -67,11 +67,6 @@ public class ExchangeUseCase {
             throw new BadRequestException("Both listings must be open");
         }
 
-        if (exchangeRepo.isListingInPendingExchange(offered.getId()) ||
-                exchangeRepo.isListingInPendingExchange(selected.getId())) {
-            throw new ConflictException("One of the listings is already in a pending exchange");
-        }
-
         if (exchangeRepo.findByOfferedIdAndSelectedId(offered.getId(), selected.getId()).isPresent()) {
             throw new ConflictException("Duplicate exchange proposal");
         }

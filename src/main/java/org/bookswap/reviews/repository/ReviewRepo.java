@@ -18,4 +18,7 @@ public interface ReviewRepo extends JpaRepository<Review, Long> {
     boolean existsByFromUserIdAndListingId(Long fromUserId, Long listingId);
 
     Page<Review> findByToUserIdAndModerationStatusOrderByCreatedAtDesc(Long userId, ModerationStatus status, Pageable pageable);
+
+    Page<Review> findByModerationStatusOrderByCreatedAtDesc(ModerationStatus status, Pageable pageable);
+
 }

@@ -8,6 +8,7 @@ import org.bookswap.catalog.dto.CreateBookDto;
 import org.bookswap.catalog.dto.GenreDto;
 import org.bookswap.catalog.dto.UpdateBookDto;
 import org.bookswap.catalog.entity.*;
+import org.bookswap.catalog.mapper.BookMapper;
 import org.bookswap.catalog.repository.BookImageRepo;
 import org.bookswap.catalog.repository.BookRepo;
 import org.bookswap.catalog.repository.GenreRepo;
@@ -42,6 +43,7 @@ public class CatalogUseCase {
     private final WantedBookRepo wantedBookRepo;
     private final UserRepo userRepo;
     private final ImageService imageService;
+    private final BookMapper bookMapper;
 
     public BookDto addBook(Long userId, String role, CreateBookDto dto, MultipartFile file) {
         User user = getActiveUser(userId);
@@ -82,7 +84,7 @@ public class CatalogUseCase {
                     .build());
         }
 
-        return toDto(book);
+        return bookMapper.toDto(book);
     }
 
     public void uploadImage(Long bookId, Long userId, String role, MultipartFile file) {
@@ -112,7 +114,7 @@ public class CatalogUseCase {
 
     public BookDto getBook(Long id) {
         return bookRepo.findById(id)
-                .map(this::toDto)
+                .map(bookMapper::toDto)
                 .orElseThrow(() -> new NotFoundException("Book not found"));
     }
 
@@ -123,7 +125,7 @@ public class CatalogUseCase {
     public Page<BookDto> filterBooks(String title, String author, List<AgeCategory> ageCategories,
                                      List<Long> genreIds, Pageable pageable) {
         return bookRepo.searchBooks(title, author, ageCategories, genreIds, pageable)
-                .map(this::toDto);
+                .map(bookMapper::toDto);
     }
 
     public void addWantedBook(Long userId, Long bookId) {
@@ -151,7 +153,7 @@ public class CatalogUseCase {
 
     public Page<BookDto> getUserWantedBooks(Long userId, Pageable pageable) {
         return wantedBookRepo.findByUserIdOrderByCreatedAtDesc(userId, pageable)
-                .map(w -> toDto(w.getBook()));
+                .map(w -> bookMapper.toDto(w.getBook()));
     }
 
     @Transactional(readOnly = true)
@@ -225,30 +227,6 @@ public class CatalogUseCase {
         }
 
         bookRepo.save(book);
-    }
-
-    private BookDto toDto(Book book) {
-        String imageUrl = bookImageRepo.findByBookId(book.getId()).stream()
-                .map(BookImage::getUrl)
-                .findFirst()
-                .orElse(null);
-
-        return new BookDto(
-                book.getId(),
-                book.getTitle(),
-                book.getAuthor(),
-                book.getYear(),
-                book.getDescription(),
-                book.getGenres().stream()
-                        .map(Genre::getName)
-                        .sorted()
-                        .toList(),
-                book.getAgeCategory(),
-                imageUrl,
-                book.getModerationStatus(),
-                book.getCreatedBy() != null ? book.getCreatedBy().getId() : null,
-                book.getCreatedAt()
-        );
     }
 
     public void deleteImage(Long imageId, Long userId, String role) {

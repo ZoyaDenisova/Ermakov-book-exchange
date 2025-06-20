@@ -1,16 +1,12 @@
 package org.bookswap.listings.usecase;
 
 import lombok.RequiredArgsConstructor;
-import org.bookswap.auth.dto.UserDto;
 import org.bookswap.auth.entity.User;
 import org.bookswap.auth.repository.UserRepo;
 import org.bookswap.auth.security.AuthContext;
 import org.bookswap.auth.security.SecurityUtil;
-import org.bookswap.catalog.dto.BookDto;
 import org.bookswap.catalog.entity.AgeCategory;
 import org.bookswap.catalog.entity.Book;
-import org.bookswap.catalog.entity.BookImage;
-import org.bookswap.catalog.entity.Genre;
 import org.bookswap.catalog.repository.BookImageRepo;
 import org.bookswap.catalog.repository.BookRepo;
 import org.bookswap.common.exception.BadRequestException;
@@ -20,6 +16,8 @@ import org.bookswap.listings.dto.*;
 import org.bookswap.listings.entity.City;
 import org.bookswap.listings.entity.Listing;
 import org.bookswap.listings.entity.ListingImage;
+import org.bookswap.listings.mapper.CityMapper;
+import org.bookswap.listings.mapper.ListingMapper;
 import org.bookswap.listings.repository.CityRepo;
 import org.bookswap.listings.repository.ListingImageRepo;
 import org.bookswap.listings.repository.ListingRepo;
@@ -49,6 +47,8 @@ public class ListingUseCase {
     private final CityRepo cityRepo;
     private final ListingImageRepo imageRepo;
     private final ImageService imageService;
+    private final ListingMapper listingMapper;
+    private final CityMapper cityMapper;
 
     @Transactional
     public ListingDto createListing(Long userId, CreateListingDto dto, List<MultipartFile> images) {
@@ -85,7 +85,7 @@ public class ListingUseCase {
             }
         }
 
-        return toDto(listing);
+        return listingMapper.toDto(listing);
     }
 
     public void updateListing(Long listingId, Long userId, String role, UpdateListingDto dto) {
@@ -131,7 +131,7 @@ public class ListingUseCase {
         Listing listing = listingRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Listing not found"));
 
-        return toDto(listing);
+        return listingMapper.toDto(listing);
     }
 
     public Page<ListingDto> filterListings(ListingFilterDto filter, Pageable pageable) {
@@ -159,7 +159,7 @@ public class ListingUseCase {
                 pageable
         );
 
-        return page.map(this::toDto);
+        return page.map(listingMapper::toDto);
     }
 
     @Transactional
@@ -195,7 +195,7 @@ public class ListingUseCase {
     @Transactional(readOnly = true)
     public Page<ListingDto> getAllVisibleListingsByUser(Long userId, Pageable pageable) {
         return listingRepo.findAllVisibleByUserIdOrdered(userId, pageable)
-                .map(this::toDto);
+                .map(listingMapper::toDto);
     }
 
     @Transactional(readOnly = true)
@@ -204,7 +204,7 @@ public class ListingUseCase {
 
         Pageable pageable = PageRequest.of(0, 10); // лимит по умолчанию
         return cityRepo.searchCityByNameOrRegion(query, pageable).stream()
-                .map(this::toDto)
+                .map(cityMapper::toDto)
                 .toList();
     }
 
@@ -214,72 +214,4 @@ public class ListingUseCase {
         assertNotBanned(user);
         return user;
     }
-
-    private CityDto toDto(City city) {
-        return new CityDto(
-                city.getId(),
-                city.getName(),
-                city.getRegion(),
-                city.getCountry()
-        );
-    }
-
-    private ListingDto toDto(Listing listing) {
-        Book book = listing.getBook();
-        User owner = listing.getOwner();
-        City city = listing.getCity();
-        City ownerCity = owner.getCity();
-
-        List<String> listingImageUrls = imageRepo.findByListingId(listing.getId()).stream()
-                .map(ListingImage::getUrl)
-                .toList();
-
-        String bookImageUrl = bookImageRepo.findByBookId(book.getId()).stream()
-                .map(BookImage::getUrl)
-                .findFirst()
-                .orElse(null);
-
-        return new ListingDto(
-                listing.getId(),
-                new BookDto(
-                        book.getId(),
-                        book.getTitle(),
-                        book.getAuthor(),
-                        book.getYear(),
-                        book.getDescription(),
-                        book.getGenres().stream().map(Genre::getName).toList(),
-                        book.getAgeCategory(),
-                        bookImageUrl,
-                        book.getModerationStatus(),
-                        book.getCreatedBy() != null ? book.getCreatedBy().getId() : null,
-                        book.getCreatedAt()
-                ),
-                new CityDto(
-                        city.getId(),
-                        city.getName(),
-                        city.getRegion(),
-                        city.getCountry()
-                ),
-                new UserDto(
-                        owner.getId(),
-                        owner.getName(),
-                        owner.getEmail(),
-                        owner.getAvatarUrl(),
-                        owner.getRole().name(),
-                        owner.isBanned(),
-                        new CityDto(
-                                ownerCity.getId(),
-                                ownerCity.getName(),
-                                ownerCity.getRegion(),
-                                ownerCity.getCountry()
-                        )
-                ),
-                listing.getCondition(),
-                listingImageUrls,
-                listing.isOpen(),
-                listing.isBlocked(),
-                listing.getCreatedAt()
-        );
-    }
-
 }

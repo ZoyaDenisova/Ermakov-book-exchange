@@ -9,6 +9,7 @@ import org.bookswap.common.exception.ForbiddenException;
 import org.bookswap.common.exception.NotFoundException;
 import org.bookswap.exchange.dto.ExchangeCreateDto;
 import org.bookswap.exchange.entity.Exchange;
+import org.bookswap.exchange.mapper.ExchangeMapper;
 import org.bookswap.exchange.usecase.ExchangeUseCase;
 import org.bookswap.listings.entity.Listing;
 import org.bookswap.listings.entity.ListingImage;
@@ -46,6 +47,8 @@ public class MessagingUseCase {
     private final ExchangeUseCase exchangeUseCase;
     private final UserRepo userRepo;
     private final ImageService imageService;
+    private final ExchangeMapper exchangeMapper;
+
 
     public List<DialogDto> getUserDialogs(Long userId) {
         return dialogRepo.findUserDialogsOrderedByLastMessage(userId).stream().map(dialog -> {
@@ -105,7 +108,7 @@ public class MessagingUseCase {
                 msg.getId(), msg.getAuthor().getId(), msg.getAuthor().getName(),
                 msg.getContent(),
                 chatImageRepo.findByMessageId(msg.getId()).stream().map(ChatImage::getUrl).toList(),
-                msg.getExchange() != null ? exchangeUseCase.toDto(msg.getExchange()) : null,
+                msg.getExchange() != null ? exchangeMapper.toDto(msg.getExchange()) : null,
                 msg.isExchangeProposal(),
                 msg.getCreatedAt()
         )).toList();

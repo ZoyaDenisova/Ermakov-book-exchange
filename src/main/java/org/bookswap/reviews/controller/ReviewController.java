@@ -3,8 +3,11 @@ package org.bookswap.reviews.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.bookswap.auth.entity.Role;
 import org.bookswap.auth.security.AuthContext;
+import org.bookswap.auth.security.SecurityUtil;
 import org.bookswap.auth.security.TokenManager;
+import org.bookswap.catalog.entity.ModerationStatus;
 import org.bookswap.reviews.dto.ComplaintDto;
 import org.bookswap.reviews.dto.CreateComplaintDto;
 import org.bookswap.reviews.dto.CreateReviewDto;
@@ -50,6 +53,44 @@ public class ReviewController {
         AuthContext ctx = new AuthContext(request, tokenManager);
         reviewUseCase.createComplaint(ctx.getUserId(), dto, images);
         return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Получить отзывы по статусу модерации (только для модератора/админа)")
+    @GetMapping("/moderation")
+    public ResponseEntity<Page<ReviewDto>> getReviewsByModerationStatus(
+            @RequestParam ModerationStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request
+    ) {
+        AuthContext ctx = new AuthContext(request, tokenManager);
+        SecurityUtil.assertHasRole(ctx.getRole(), Role.ADMIN, Role.MODERATOR);
+
+        return ResponseEntity.ok(
+                reviewUseCase.getReviewsByModerationStatus(
+                        status,
+                        PageRequest.of(page, size)
+                )
+        );
+    }
+
+    @Operation(summary = "Получить все жалобы по статусу")
+    @GetMapping("/complaints")
+    public ResponseEntity<Page<ComplaintDto>> getComplaintsByReviewed(
+            @RequestParam boolean reviewed,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request
+    ) {
+        AuthContext ctx = new AuthContext(request, tokenManager);
+        SecurityUtil.assertHasRole(ctx.getRole(), Role.ADMIN, Role.MODERATOR);
+
+        return ResponseEntity.ok(
+                reviewUseCase.getComplaintsByReviewedStatus(
+                        reviewed,
+                        PageRequest.of(page, size)
+                )
+        );
     }
 
     @Operation(summary = "Одобрить отзыв (модератор/админ)")

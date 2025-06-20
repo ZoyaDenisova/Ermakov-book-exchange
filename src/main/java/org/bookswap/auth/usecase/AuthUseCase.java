@@ -5,6 +5,7 @@ import org.bookswap.auth.dto.*;
 import org.bookswap.auth.entity.Role;
 import org.bookswap.auth.entity.Session;
 import org.bookswap.auth.entity.User;
+import org.bookswap.auth.mapper.UserMapper;
 import org.bookswap.auth.repository.SessionRepo;
 import org.bookswap.auth.repository.UserRepo;
 import org.bookswap.auth.security.PasswordHasher;
@@ -14,7 +15,6 @@ import org.bookswap.common.exception.BadRequestException;
 import org.bookswap.common.exception.ConflictException;
 import org.bookswap.common.exception.NotFoundException;
 import org.bookswap.common.exception.UnauthorizedException;
-import org.bookswap.listings.dto.CityDto;
 import org.bookswap.listings.entity.City;
 import org.bookswap.listings.repository.CityRepo;
 import org.bookswap.listings.repository.ListingRepo;
@@ -41,6 +41,7 @@ public class AuthUseCase {
     private final PasswordHasher hasher;
     private final TokenManager tokenManager;
     private final ImageService imageService;
+    private final UserMapper userMapper;
 
     public TokenPairDto register(RegisterDto dto) {
         userRepo.findByEmail(dto.email()).ifPresent(u -> {
@@ -125,11 +126,11 @@ public class AuthUseCase {
         User u = userRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        return toDto(u);
+        return userMapper.toDto(u);
     }
 
     public List<UserDto> getAll() {
-        return userRepo.findAll().stream().map(this::toDto).toList();
+        return userRepo.findAll().stream().map(userMapper::toDto).toList();
     }
 
     public void banUser(Long targetId, Long actorId) {
@@ -231,22 +232,5 @@ public class AuthUseCase {
 
         sessionRepo.save(session);
         return tokens;
-    }
-
-    private UserDto toDto(User u) {
-        return new UserDto(
-                u.getId(),
-                u.getName(),
-                u.getEmail(),
-                u.getAvatarUrl(),
-                u.getRole().name(),
-                u.isBanned(),
-                u.getCity() != null ? new CityDto(
-                        u.getCity().getId(),
-                        u.getCity().getName(),
-                        u.getCity().getRegion(),
-                        u.getCity().getCountry()
-                ) : null
-        );
     }
 }

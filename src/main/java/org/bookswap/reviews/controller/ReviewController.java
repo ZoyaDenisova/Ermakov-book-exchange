@@ -1,17 +1,23 @@
 package org.bookswap.reviews.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.bookswap.auth.security.AuthContext;
 import org.bookswap.auth.security.TokenManager;
-import org.bookswap.reviews.dto.*;
+import org.bookswap.reviews.dto.ComplaintDto;
+import org.bookswap.reviews.dto.CreateComplaintDto;
+import org.bookswap.reviews.dto.CreateReviewDto;
+import org.bookswap.reviews.dto.ReviewDto;
 import org.bookswap.reviews.usecase.ReviewUseCase;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 
 @RestController
@@ -72,8 +78,13 @@ public class ReviewController {
 
     @Operation(summary = "Получить список одобренных отзывов на пользователя")
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<ReviewDto>> getApprovedReviews(@PathVariable Long userId) {
-        return ResponseEntity.ok(reviewUseCase.getApprovedReviewsForUser(userId));
+    public ResponseEntity<Page<ReviewDto>> getApprovedReviews(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(reviewUseCase.getApprovedReviewsForUser(userId, pageable));
     }
 
     @Operation(summary = "Получить средний рейтинг пользователя")

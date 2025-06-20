@@ -5,7 +5,10 @@ import org.bookswap.auth.entity.Role;
 import org.bookswap.auth.entity.User;
 import org.bookswap.auth.repository.UserRepo;
 import org.bookswap.auth.security.SecurityUtil;
+import org.bookswap.catalog.entity.Book;
+import org.bookswap.catalog.entity.BookImage;
 import org.bookswap.catalog.entity.ModerationStatus;
+import org.bookswap.catalog.repository.BookImageRepo;
 import org.bookswap.common.exception.BadRequestException;
 import org.bookswap.common.exception.ConflictException;
 import org.bookswap.common.exception.NotFoundException;
@@ -24,9 +27,10 @@ import org.bookswap.reviews.repository.ComplaintRepo;
 import org.bookswap.reviews.repository.ReviewImageRepo;
 import org.bookswap.reviews.repository.ReviewRepo;
 import org.bookswap.shared.image.ImageService;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -45,6 +49,7 @@ public class ReviewUseCase {
     private final ListingRepo listingRepo;
     private final UserRepo userRepo;
     private final ImageService imageService;
+    private final BookImageRepo bookImageRepo;
 
     public void createReview(Long fromUserId, CreateReviewDto dto, List<MultipartFile> images) {
         validateImages(images);
@@ -132,11 +137,10 @@ public class ReviewUseCase {
         complaint.setReviewed(true);
     }
 
-    public List<ReviewDto> getApprovedReviewsForUser(Long userId) {
-        return reviewRepo.findByToUserIdOrderByCreatedAtDesc(userId, Pageable.unpaged()).stream()
-                .filter(r -> r.getModerationStatus() == ModerationStatus.APPROVED)
-                .map(this::toDto)
-                .toList();
+    public Page<ReviewDto> getApprovedReviewsForUser(Long userId, Pageable pageable) {
+        return reviewRepo
+                .findByToUserIdAndModerationStatusOrderByCreatedAtDesc(userId, ModerationStatus.APPROVED, pageable)
+                .map(this::toDto);
     }
 
     public double getAverageRatingForUser(Long userId) {
@@ -195,10 +199,36 @@ public class ReviewUseCase {
         return complaintRepo.findById(id).orElseThrow(() -> new NotFoundException("Complaint not found"));
     }
 
-    private ReviewDto toDto(Review r) {
-        List<String> urls = reviewImageRepo.findByReviewId(r.getId()).stream().map(ReviewImage::getUrl).toList();
-        return new ReviewDto(r.getId(), r.getListing().getId(), r.getFromUser().getId(), r.getToUser().getId(),
-                r.getRating(), r.getComment(), r.getModerationStatus(), urls, r.getCreatedAt());
+    private ReviewDto toDto(Review review) {
+        Listing listing = review.getListing();
+        Book book = listing.getBook();
+        User fromUser = review.getFromUser();
+
+        List<String> imageUrls = reviewImageRepo.findByReviewId(review.getId()).stream()
+                .map(ReviewImage::getUrl)
+                .toList();
+
+        String bookImageUrl = bookImageRepo.findByBookId(book.getId()).stream()
+                .map(BookImage::getUrl)
+                .findFirst()
+                .orElse(null);
+
+        return new ReviewDto(
+                review.getId(),
+                listing.getId(),
+                fromUser.getId(),
+                fromUser.getName(),
+                fromUser.getAvatarUrl(),
+                review.getToUser().getId(),
+                review.getRating(),
+                review.getComment(),
+                review.getModerationStatus(),
+                imageUrls,
+                book.getTitle(),
+                book.getAuthor(),
+                bookImageUrl,
+                review.getCreatedAt()
+        );
     }
 
     private ComplaintDto toDto(Complaint c) {

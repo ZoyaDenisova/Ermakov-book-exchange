@@ -1,11 +1,15 @@
 package org.bookswap.shared.image;
 
 import lombok.extern.slf4j.Slf4j;
+import org.bookswap.common.exception.InternalServerErrorException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 @Slf4j
@@ -28,7 +32,7 @@ public class ImageService {
             return "/" + BASE_DIR + "/" + folder + "/" + entityId + "/" + uniqueName;
         } catch (IOException e) {
             log.error("Failed to save image", e);
-            throw new RuntimeException("Failed to save image", e);
+            throw new InternalServerErrorException("Failed to save image", e);
         }
     }
 

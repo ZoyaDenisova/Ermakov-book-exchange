@@ -42,6 +42,7 @@ public class ExchangeUseCase {
         return exchangeMapper.toDto(exchange);
     }
 
+    //Предложить обмен
     public Exchange proposeExchangeEntity(Long senderId, ExchangeCreateDto dto) {
         if (dto.offeredListingId().equals(dto.selectedListingId())) {
             throw new BadRequestException("Cannot exchange listing with itself");

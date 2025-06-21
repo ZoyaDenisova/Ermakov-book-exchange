@@ -61,25 +61,26 @@ public interface ListingRepo extends JpaRepository<Listing, Long> {
 
     // Объявления по городу, книге и состоянию
     @Query("""
-        SELECT DISTINCT l FROM Listing l
-        JOIN l.book b
-        LEFT JOIN b.genres g
-        WHERE l.isOpen   = true
-          AND l.isBlocked = false
-          AND (:title  IS NULL OR LOWER(b.title)  LIKE LOWER(CONCAT('%', :title,  '%')))
-          AND (:author IS NULL OR LOWER(b.author) LIKE LOWER(CONCAT('%', :author, '%')))
-          AND (:ageCategories IS NULL OR b.ageCategory IN :ageCategories)
-          AND (:genreIds      IS NULL OR g.id         IN :genreIds)
-          AND (:city      IS NULL OR l.city      = :city)
-          AND (:condition IS NULL OR l.condition = :condition)
-        ORDER BY l.createdAt DESC
-    """)
+    SELECT DISTINCT l FROM Listing l
+    JOIN l.book b
+    LEFT JOIN b.genres g
+    WHERE l.isOpen = true
+      AND (:title IS NULL OR LOWER(b.title) LIKE LOWER(CONCAT('%', :title, '%')))
+      AND (:author IS NULL OR LOWER(b.author) LIKE LOWER(CONCAT('%', :author, '%')))
+      AND (:ageCategories IS NULL OR b.ageCategory IN :ageCategories)
+      AND (:genreIds IS NULL OR g.id IN :genreIds)
+      AND (:city IS NULL OR l.city = :city)
+      AND (:condition IS NULL OR l.condition = :condition)
+      AND (:isBlocked IS NULL OR l.isBlocked = :isBlocked)
+    ORDER BY l.createdAt DESC
+""")
     Page<Listing> searchListingsFull(@Param("title") String title,
                                      @Param("author") String author,
                                      @Param("ageCategories") List<AgeCategory> ageCategories,
                                      @Param("genreIds") List<Long> genreIds,
                                      @Param("city") City city,
                                      @Param("condition") BookCondition condition,
+                                     @Param("isBlocked") Boolean isBlocked,
                                      Pageable pageable);
 
     // Заблокировать все объявления пользователя (например, при бане)

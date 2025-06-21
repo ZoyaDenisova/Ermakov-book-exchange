@@ -109,6 +109,14 @@ public class ReviewController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Удалить отзыв")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteReview(@PathVariable Long id, HttpServletRequest request) {
+        AuthContext ctx = new AuthContext(request, tokenManager);
+        reviewUseCase.deleteReview(id, ctx.getUserId(), ctx.getRole());
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "Пометить жалобу как рассмотренную (модератор/админ)")
     @PatchMapping("/complaint/{id}/reviewed")
     public ResponseEntity<Void> markComplaintReviewed(@PathVariable Long id, HttpServletRequest request) {

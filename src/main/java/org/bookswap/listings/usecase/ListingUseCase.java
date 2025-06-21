@@ -156,11 +156,13 @@ public class ListingUseCase {
                 genres,
                 city,
                 filter.condition(),
+                filter.isBlocked(),
                 pageable
         );
 
         return page.map(listingMapper::toDto);
     }
+
 
     @Transactional
     public void closeListing(Long id, AuthContext auth) {

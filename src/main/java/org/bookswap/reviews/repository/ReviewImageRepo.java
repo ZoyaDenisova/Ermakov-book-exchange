@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface ReviewImageRepo extends JpaRepository<ReviewImage, Long> {
     List<ReviewImage> findByReviewId(Long reviewId);
+
+    void deleteByReviewId(Long reviewId);
 }

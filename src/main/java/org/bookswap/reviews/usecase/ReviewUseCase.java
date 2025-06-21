@@ -9,6 +9,7 @@ import org.bookswap.catalog.entity.ModerationStatus;
 import org.bookswap.catalog.repository.BookImageRepo;
 import org.bookswap.common.exception.BadRequestException;
 import org.bookswap.common.exception.ConflictException;
+import org.bookswap.common.exception.ForbiddenException;
 import org.bookswap.common.exception.NotFoundException;
 import org.bookswap.listings.entity.Listing;
 import org.bookswap.listings.repository.ListingImageRepo;
@@ -134,6 +135,24 @@ public class ReviewUseCase {
         Review review = getReviewOrThrow(id);
         review.setModerationStatus(ModerationStatus.REJECTED);
     }
+
+    @Transactional
+    public void deleteReview(Long id, Long userId, String role) {
+        Review review = reviewRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Review not found"));
+
+        // Проверка: либо автор, либо модер/админ
+        try {
+            SecurityUtil.assertIsSelfOrThrow(userId, review.getFromUser().getId());
+        } catch (ForbiddenException e) {
+            SecurityUtil.assertHasRole(role, Role.MODERATOR, Role.ADMIN);
+        }
+
+        reviewImageRepo.deleteByReviewId(review.getId());
+
+        reviewRepo.delete(review);
+    }
+
 
     public void markComplaintReviewed(Long id, String role) {
         SecurityUtil.assertHasRole(role, Role.MODERATOR, Role.ADMIN);

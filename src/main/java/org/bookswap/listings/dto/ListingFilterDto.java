@@ -11,6 +11,7 @@ public record ListingFilterDto(
         List<AgeCategory> ageCategories,
         List<Long> genreIds,
         Long cityId,
-        BookCondition condition
+        BookCondition condition,
+        Boolean isBlocked
 ) {}
 
